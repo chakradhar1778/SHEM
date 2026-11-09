@@ -1,10 +1,10 @@
-.docview { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, 0.6); }
-.docview__panel { width: 100%; max-width: 640px; max-height: calc(100vh - 32px); display: flex; flex-direction: column; border-radius: 22px; background: #fff; box-shadow: 0 20px 60px rgba(15, 23, 42, 0.35); overflow: hidden; }
+.docview { position: fixed; inset: 0; box-sizing: border-box; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, 0.6); }
+.docview__panel { box-sizing: border-box; width: 100%; max-width: min(640px, calc(var(--app-width) - 16px)); min-width: 0; max-height: calc(100dvh - 32px); display: flex; flex-direction: column; border-radius: 22px; background: #fff; box-shadow: 0 20px 60px rgba(15, 23, 42, 0.35); overflow: hidden; }
 .docview__head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
 .docview__title { display: flex; flex-direction: column; min-width: 0; }
 .docview__title b { font-size: 14px; color: var(--ink); }
 .docview__title span { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.docview__body { flex: 1; min-height: 240px; overflow: auto; display: flex; align-items: flex-start; justify-content: center; padding: 12px; background: #F1F4FA; }
-.docview__img { max-width: 100%; height: auto; border-radius: 10px; box-shadow: var(--shadow-card); }
-.docview__pdf { width: 100%; height: 70vh; border: none; border-radius: 10px; background: #fff; }
-.docview__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.docview__body { flex: 1; min-width: 0; min-height: 240px; overflow: auto; display: flex; align-items: flex-start; justify-content: center; padding: 12px; background: #F1F4FA; }
+.docview__img { display: block; min-width: 0; max-width: 100%; height: auto; border-radius: 10px; box-shadow: var(--shadow-card); }
+.docview__pdf { display: block; width: 100%; max-width: 100%; height: 70dvh; border: none; border-radius: 10px; background: #fff; }
+.docview__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }

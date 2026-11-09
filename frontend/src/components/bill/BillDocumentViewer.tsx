@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { errorMessage } from '../../api/backendApi';
 import { fetchBillDocument } from '../../api/billsApi';
 import type { BillRecord } from '../../context/billContextDef';
 import { CloseIcon, TrashIcon } from '../ui/icons';
 import './BillDocumentViewer.css';
 
-/** Full-screen viewer for a stored bill document (image or PDF). The file is fetched with the API key. */
+/**
+ * Full-screen viewer for a stored bill document (image or PDF). The file is fetched with the API key.
+ * Rendered into document.body: an ancestor with backdrop-filter/transform (e.g. `.sheet`) would
+ * otherwise become the containing block for `position: fixed` and push the panel off-screen.
+ */
 export function BillDocumentViewer({ bill, onClose, onRemove }: { bill: BillRecord; onClose: () => void; onRemove: () => void }) {
   const [url, setUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +43,7 @@ export function BillDocumentViewer({ bill, onClose, onRemove }: { bill: BillReco
   const name = bill.documentFilename || `${bill.billingPeriod ?? 'bill'}${isPdf ? '.pdf' : ''}`;
   const size = bill.documentSize ? `${(bill.documentSize / 1024 / 1024).toFixed(bill.documentSize > 1024 * 1024 ? 1 : 2)} MB` : '';
 
-  return (
+  return createPortal(
     <div className="docview" role="dialog" aria-modal="true" aria-label={`Bill document: ${name}`} onClick={onClose}>
       <div className="docview__panel" onClick={(e) => e.stopPropagation()}>
         <header className="docview__head">
@@ -64,6 +69,7 @@ export function BillDocumentViewer({ bill, onClose, onRemove }: { bill: BillReco
           <button type="button" className="btn-link btn-link--danger" onClick={onRemove}><TrashIcon size={16} /> Remove document</button>
         </footer>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

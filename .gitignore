@@ -5,6 +5,7 @@
 !/backend/
 !/frontend/
 !/Main_Code/
+!/start.py
 
 # Firmware credentials (template: Main_Code/secrets.example.h)
 Main_Code/secrets.h

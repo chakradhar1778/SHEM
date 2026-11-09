@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import mimetypes
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -127,6 +128,10 @@ for module in (device, telemetry, relay, household, inventory, bills, billing, a
 
 
 _DIST = Path(settings.frontend_dist_path).resolve()
+# PWA files: Windows' registry often lacks this type; the manifest and service
+# worker must not be cached, so phones pick up new builds.
+mimetypes.add_type("application/manifest+json", ".webmanifest")
+_NO_CACHE_FILES = {"sw.js", "manifest.webmanifest"}
 
 if (_DIST / "index.html").is_file():
     # Serve the built React app (SPA): real files as-is, every other non-API
@@ -137,7 +142,8 @@ if (_DIST / "index.html").is_file():
             raise HTTPException(status.HTTP_404_NOT_FOUND)
         candidate = (_DIST / full_path).resolve()
         if full_path and candidate.is_file() and candidate.is_relative_to(_DIST):
-            return FileResponse(candidate)
+            headers = {"Cache-Control": "no-cache"} if full_path in _NO_CACHE_FILES else None
+            return FileResponse(candidate, headers=headers)
         return FileResponse(_DIST / "index.html", headers={"Cache-Control": "no-cache"})
 else:
     @app.get("/", include_in_schema=False)

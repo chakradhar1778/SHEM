@@ -23,3 +23,6 @@ _legacy_unsafe_tests/
 
 # Uploaded bill documents (personal data)
 uploads/
+
+# Local HTTPS certificates made by start.py (CA private key — never commit)
+.https/

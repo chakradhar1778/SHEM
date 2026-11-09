@@ -135,6 +135,43 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return (await response.json()) as T;
 }
 
+async function rawFetch(path: string, init: RequestInit): Promise<Response> {
+  const { baseUrl, apiKey } = getConnection();
+  const headers = new Headers(init.headers);
+  if (apiKey) headers.set('X-API-Key', apiKey);
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}${path}`, { ...init, headers });
+  } catch {
+    throw new ApiError(0, 'Cannot reach the SHEM backend. Check that it is running and the backend URL is correct.');
+  }
+  if (!response.ok) {
+    let detail: unknown;
+    try {
+      detail = ((await response.json()) as { detail?: unknown }).detail;
+    } catch {
+      detail = undefined;
+    }
+    throw new ApiError(response.status, describeFailure(response.status, detail, `Request failed (${response.status})`));
+  }
+  return response;
+}
+
+/** Send a file as the raw request body (Content-Type = the file's type); JSON response. */
+export async function apiUpload<T>(path: string, file: Blob, method = 'PUT'): Promise<T> {
+  const response = await rawFetch(path, {
+    method,
+    body: file,
+    headers: { 'Content-Type': file.type || 'application/octet-stream' },
+  });
+  return (await response.json()) as T;
+}
+
+/** Download an authenticated file as a Blob (e.g. to show it via an object URL). */
+export async function apiBlob(path: string): Promise<Blob> {
+  return (await rawFetch(path, { method: 'GET' })).blob();
+}
+
 /** ws(s):// URL for the live stream; browsers cannot send headers, so the key goes in the query. */
 export function websocketUrl(path: string): string {
   const { baseUrl, apiKey } = getConnection();

@@ -30,15 +30,19 @@ Gaps found in the billing review (2026-11-10). Ordered by priority.
   The Bill page compares a bill with rated W × hours/day. Compare with the metered + simulated kWh for the
   bill's real period (`billingPeriodStart` → `billingPeriodEnd`), and fall back to estimates only without data.
 
-## Next
-
-- [ ] **5. Billing cycle alignment everywhere**
+- [x] **5. Billing cycle alignment everywhere** — done 2026-11-10
+  (Insights bill comparison uses the bill's real period; Target and Home measure the current billing cycle
+  priced with the tariff; bill form fills period dates from the meter reading day)
   The Insights bill comparison uses `monthrange()` (calendar month). Use the bill's own period dates and
   the configured cycle day; prefill the period dates in the bill form from the cycle.
 
-- [ ] **6. Store the bill document so it can be viewed later (no OCR)**
+- [x] **6. Store the bill document so it can be viewed later (no OCR)** — done 2026-11-10
+  (attach JPG/PNG/WebP/PDF ≤ 10 MB when adding a bill or later from Bill history; "View bill" viewer;
+  type verified from the file bytes; stored in backend/uploads, git-ignored)
   Today only the file name is saved. Upload the image/PDF to the backend (size + type limits), keep it with the
   bill, and add a "View bill" action in Bill history. Reading the contents (OCR) is out of scope.
+
+## Next
 
 - [ ] **7. Alerts + working notification bell**
   The top-bar bell is decorative. Add a notifications feed (WebSocket + list) for: bill due soon / overdue,

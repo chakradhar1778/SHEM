@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 
-from sqlalchemy import desc, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -421,17 +421,30 @@ def _key_insight(energy: Dict[datetime, float], peak: Optional[InsightsTrendPoin
     return InsightsKeyInsight(title=f"Highest usage: {peak.label}", description=desc_, peak_period=peak_period)
 
 
+def _latest_bill(db: Session) -> Optional[ElectricityBill]:
+    """Most recent bill by its billing period (its own start date, else month/year), not by entry order."""
+    from app.services.billing_service import bill_period, load_tariff
+    cycle_day = load_tariff(db).cycle_day
+    best, best_start = None, None
+    for bill in db.scalars(select(ElectricityBill)).all():
+        try:
+            start, _, _ = bill_period(bill, cycle_day)
+        except ValueError:
+            continue
+        if best_start is None or start > best_start:
+            best, best_start = bill, start
+    return best
+
+
 def _bill_comparison(db: Session, total: float, coverage_hours: float) -> Optional[BillComparison]:
-    bill = db.scalar(
-        select(ElectricityBill)
-        .where(ElectricityBill.billing_month.is_not(None), ElectricityBill.billing_year.is_not(None))
-        .order_by(desc(ElectricityBill.billing_year), desc(ElectricityBill.billing_month))
-        .limit(1)
-    )
+    from app.services.billing_service import bill_period, load_tariff
+    bill = _latest_bill(db)
     if not bill or bill.units_consumed_kwh <= 0:
         return None
-    days = monthrange(bill.billing_year, bill.billing_month)[1]
-    label = bill.billing_period or datetime(bill.billing_year, bill.billing_month, 1).strftime("%b %Y")
+    start, end, _ = bill_period(bill, load_tariff(db).cycle_day)
+    days = max((end - start).days, 1)              # the bill's real period, not a calendar month
+    label = bill.billing_period or f"{start.day} {start:%b} – {(end - timedelta(days=1)).day} " \
+                                   f"{(end - timedelta(days=1)):%b %Y}"
     return BillComparison(
         billing_label=label,
         bill_daily_kwh=round(bill.units_consumed_kwh / days, 2),

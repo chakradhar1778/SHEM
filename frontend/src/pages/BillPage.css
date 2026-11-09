@@ -78,3 +78,6 @@
 
 .bill-hist-item { display: flex; flex-direction: column; gap: 4px; }
 .bill-hist__toggle { align-self: flex-start; margin-left: 4px; font-size: 12.5px; }
+.bill-hist__actions { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.bill-hist__toggle { display: inline-flex; align-items: center; gap: 4px; }
+.bill-hist__doc-status { margin-left: 4px; font-size: 12px; color: var(--muted); }

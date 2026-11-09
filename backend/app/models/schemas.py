@@ -345,6 +345,10 @@ class ElectricityBillSchema(ApiModel):
     billing_period_days: Optional[int] = None
     due_date: Optional[str] = None
     document_filename: Optional[str] = None
+    has_document: bool = False
+    document_content_type: Optional[str] = None
+    document_size: Optional[int] = None
+    document_uploaded_at: Optional[UtcDateTime] = None
     units_consumed_kwh: float
     bill_amount_inr: float
     location_tag: Optional[str] = None

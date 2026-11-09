@@ -20,6 +20,8 @@ from typing import Callable, List, Optional
 _TMP = tempfile.mkdtemp(prefix="shem-test-")
 os.environ.update({
     "SQLITE_PATH": os.path.join(_TMP, "test.db"),
+    "UPLOADS_DIR": os.path.join(_TMP, "uploads"),
+    "MAX_BILL_DOCUMENT_MB": "1",
     "API_KEY": "test-key",
     "ALLOW_UNAUTHENTICATED_DEV": "false",
     "HEARTBEAT_INTERVAL_SECONDS": "1",

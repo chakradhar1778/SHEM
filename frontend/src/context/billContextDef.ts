@@ -47,6 +47,13 @@ export interface BillRecord {
   /** Optional filename of the uploaded bill document */
   documentFilename?: string;
 
+  /** A document (image/PDF) is stored on the backend and can be viewed */
+  hasDocument?: boolean;
+  documentContentType?: string;
+  documentSize?: number;
+  /** Upload in progress or failed (UI state only) */
+  documentStatus?: 'uploading' | 'failed';
+
   /** Timestamp when this bill record was created */
   createdAt: number;
 }
@@ -80,8 +87,14 @@ export interface BillContextType extends SyncState {
   /** The most recent bill record, or null if bill history is empty */
   latestBill: BillRecord | null;
 
-  /** Adds a new bill record with validation and persistence */
-  addBill: (input: BillInput) => BillRecord | null;
+  /** Adds a new bill record with validation and persistence; `file` (image/PDF) is stored after the bill is saved */
+  addBill: (input: BillInput, file?: File | null) => BillRecord | null;
+
+  /** Store (or replace) a bill's document so it can be viewed later. Resolves with an error message or null. */
+  attachDocument: (id: string, file: File) => Promise<string | null>;
+
+  /** Remove a bill's stored document */
+  removeDocument: (id: string) => Promise<string | null>;
 
   /** Updates an existing bill record by ID with validation and persistence */
   updateBill: (id: string, input: Partial<BillInput>) => BillRecord | null;

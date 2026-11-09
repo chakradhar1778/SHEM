@@ -2,12 +2,16 @@ import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBill } from '../hooks/useBill';
 import { PageHero } from '../components/art/PageHero';
-import { ArrowIcon, CalendarIcon, ChevronDown, CloseIcon, PlusIcon, SearchIcon, TrashIcon, UploadIcon, UserIcon } from '../components/ui/icons';
+import { ArrowIcon, CalendarIcon, ChevronDown, CloseIcon, FileIcon, PlusIcon, SearchIcon, TrashIcon, UploadIcon, UserIcon } from '../components/ui/icons';
 import { RouteToast } from '../components/ui/RouteToast';
 import { ProjectedBillCard } from '../components/bill/ProjectedBillCard';
 import { BillCostSplit } from '../components/bill/BillCostSplit';
 import { BillVsUsageCard } from '../components/bill/BillVsUsageCard';
+import { BillDocumentViewer } from '../components/bill/BillDocumentViewer';
+import { BILL_DOCUMENT_MAX_MB, BILL_DOCUMENT_TYPES } from '../api/billsApi';
 import { formatCurrencyINR } from '../utils/billMath';
+import { fetchTariff } from '../api/billingApi';
+import { useApiQuery } from '../hooks/useApiQuery';
 import './BillPage.css';
 
 const PROVIDERS = ['BESCOM', 'Tata Power', 'Adani', 'MSEDCL', 'Other'];
@@ -18,6 +22,25 @@ const LOCATIONS = [
 ];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
+const pad = (n: number) => String(n).padStart(2, '0');
+const isoDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+/** The billing cycle that starts in month/year on the meter-reading day: [start, end] (end inclusive). */
+function cycleFor(month: number, year: number, cycleDay: number): { start: string; end: string } {
+  const start = new Date(year, month - 1, cycleDay);
+  const end = new Date(year, month, cycleDay - 1);
+  return { start: isoDate(start), end: isoDate(end) };
+}
+
+function ordinal(n: number): string {
+  const s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th';
+  return `${n}${s}`;
+}
+
+function daysInclusive(start: string, end: string): number {
+  return Math.round((new Date(`${end}T12:00:00`).getTime() - new Date(`${start}T12:00:00`).getTime()) / 86_400_000) + 1;
+}
+
 function formatDue(value: string): string {
   const d = /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00`) : null;
   return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : value;
@@ -26,7 +49,7 @@ function formatDue(value: string): string {
 /** Electricity bill: latest bill, optional document, manual entry, history. */
 export function BillPage() {
   const navigate = useNavigate();
-  const { bills, latestBill, addBill, deleteBill, selectedLocation, setSelectedLocation } = useBill();
+  const { bills, latestBill, addBill, deleteBill, attachDocument, removeDocument, selectedLocation, setSelectedLocation } = useBill();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const now = useMemo(() => new Date(), []);
@@ -41,7 +64,43 @@ export function BillPage() {
   const [units, setUnits] = useState('');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [fileName, setFileName] = useState<string | null>(null);
+  const { data: tariff } = useApiQuery(fetchTariff, 'bill-form-tariff');
+  const cycleDay = tariff?.billingCycleDay ?? 1;
+  // Period dates follow the meter-reading day until the user edits them.
+  const [periodOverride, setPeriodOverride] = useState<{ start: string; end: string } | null>(null);
+  const period = periodOverride ?? cycleFor(month, year, cycleDay);
+  const setPeriod = (key: 'start' | 'end', value: string) => setPeriodOverride({ ...period, [key]: value });
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileName = file?.name ?? null;
+  const [viewing, setViewing] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
+  const attachRef = useRef<HTMLInputElement>(null);
+  const [attachFor, setAttachFor] = useState<string | null>(null);
+
+  /** Client-side check (the server verifies the bytes again). */
+  const checkFile = (f: File | undefined | null): string | null => {
+    if (!f) return null;
+    if (!BILL_DOCUMENT_TYPES.includes(f.type)) return 'Choose a JPG, PNG, WebP or PDF file.';
+    if (f.size > BILL_DOCUMENT_MAX_MB * 1024 * 1024) return `That file is over ${BILL_DOCUMENT_MAX_MB} MB.`;
+    return null;
+  };
+
+  const pickFile = (f: File | undefined) => {
+    const err = checkFile(f);
+    setFileError(err);
+    setFile(err ? null : f ?? null);
+    if (err && fileRef.current) fileRef.current.value = '';
+  };
+
+  const attachToExisting = async (f: File | undefined) => {
+    const id = attachFor;
+    if (attachRef.current) attachRef.current.value = '';
+    setAttachFor(null);
+    if (!id || !f) return;
+    const err = checkFile(f) ?? (await attachDocument(id, f));
+    setRowError(err ? { id, message: err } : null);
+  };
   const [openBill, setOpenBill] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ units?: string; amount?: string; general?: string }>({});
 
@@ -73,25 +132,32 @@ export function BillPage() {
     else if (a > 10_000_000) next.amount = 'That looks too large.';
     if (year > now.getFullYear() || (year === now.getFullYear() && month > now.getMonth() + 1)) {
       next.general = 'The billing period cannot be in the future.';
+    } else if (!period.start || !period.end || period.end < period.start) {
+      next.general = 'The period end date must be on or after the start date.';
+    } else if (daysInclusive(period.start, period.end) > 70) {
+      next.general = 'A billing period longer than 70 days looks wrong. Check the dates.';
     }
     if (Object.keys(next).length) return setErrors(next);
     setErrors({});
 
-    const period = `${MONTHS[month - 1]} ${year}`;
+    const periodLabel = `${MONTHS[month - 1]} ${year}`;
     const saved = addBill({
       utilityProvider: provider,
       accountId: accountId.trim() || undefined,
       billingMonth: month,
       billingYear: year,
-      billingPeriod: period,
+      billingPeriod: periodLabel,
+      billingPeriodStart: period.start,
+      billingPeriodEnd: period.end,
+      billingPeriodDays: daysInclusive(period.start, period.end),
       unitsConsumed: u,
       billAmount: a,
       dueDate: dueDate || undefined,
       locationTag: location,
       documentFilename: fileName || undefined,
-    });
+    }, file);
     if (!saved) return setErrors({ general: 'Could not save the bill. Check the values.' });
-    navigate('/target', { state: { toast: `Bill for ${period} saved` } });
+    navigate('/target', { state: { toast: `Bill for ${periodLabel} saved` } });
   };
 
   return (
@@ -166,10 +232,10 @@ export function BillPage() {
           <span className="bill__upload-icon"><UploadIcon size={26} /></span>
           <span className="bill__upload-text">
             <b>Add bill document <i>(optional)</i></b>
-            <span>{fileName ?? 'PDF, JPG or PNG'}</span>
+            <span>{fileName ?? `PDF, JPG, PNG or WebP · up to ${BILL_DOCUMENT_MAX_MB} MB`}</span>
           </span>
           {fileName ? (
-            <button type="button" className="icon-btn" aria-label="Remove document" onClick={() => { setFileName(null); if (fileRef.current) fileRef.current.value = ''; }}>
+            <button type="button" className="icon-btn" aria-label="Remove document" onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ''; }}>
               <CloseIcon size={18} />
             </button>
           ) : (
@@ -177,9 +243,10 @@ export function BillPage() {
               <UploadIcon size={16} /> Upload
             </button>
           )}
-          <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" hidden onChange={(e) => setFileName(e.target.files?.[0]?.name ?? null)} />
+          <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" hidden onChange={(e) => pickFile(e.target.files?.[0])} />
         </div>
-        {fileName && <p className="bill__note">Only the file name is saved. SHEM doesn’t upload or read the document.</p>}
+        {fileError && <p className="form__error" role="alert">{fileError}</p>}
+        {fileName && <p className="bill__note">Saved with the bill so you can view it later from Bill history. SHEM doesn’t read its contents.</p>}
 
         <div className="bill__divider"><span>or enter details manually</span></div>
 
@@ -188,19 +255,33 @@ export function BillPage() {
             <span className="form__label">Billing period</span>
             <div className="bill__period">
               <span className="form__select-wrap">
-                <select className="form__input" value={month} onChange={(e) => setMonth(Number(e.target.value))} aria-label="Billing month">
+                <select className="form__input" value={month} onChange={(e) => { setMonth(Number(e.target.value)); setPeriodOverride(null); }} aria-label="Billing month">
                   {MONTHS.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
                 </select>
                 <ChevronDown className="form__chev" />
               </span>
               <span className="form__select-wrap">
-                <select className="form__input" value={year} onChange={(e) => setYear(Number(e.target.value))} aria-label="Billing year">
+                <select className="form__input" value={year} onChange={(e) => { setYear(Number(e.target.value)); setPeriodOverride(null); }} aria-label="Billing year">
                   {years.map((y) => <option key={y}>{y}</option>)}
                 </select>
                 <ChevronDown className="form__chev" />
               </span>
             </div>
           </div>
+          <label className="bill__field">
+            <span className="form__label">Period start</span>
+            <input className="form__input" type="date" value={period.start} onChange={(e) => setPeriod('start', e.target.value)} />
+          </label>
+          <label className="bill__field">
+            <span className="form__label">Period end</span>
+            <input className="form__input" type="date" value={period.end} onChange={(e) => setPeriod('end', e.target.value)} />
+          </label>
+          <p className="bill__note bill__field--wide">
+            {periodOverride
+              ? <>Custom dates. <button type="button" className="btn-link" onClick={() => setPeriodOverride(null)}>Use my billing cycle</button></>
+              : `From your meter reading day (${cycleDay === 1 ? 'calendar month' : `the ${ordinal(cycleDay)}`}) — change if your bill shows different dates.`}
+            {period.start && period.end && period.end >= period.start ? ` ${daysInclusive(period.start, period.end)} days.` : ''}
+          </p>
           <label className="bill__field">
             <span className="form__label">Units consumed (kWh)</span>
             <input className={`form__input ${errors.units ? 'is-bad' : ''}`} inputMode="decimal" value={units} onChange={(e) => setUnits(e.target.value)} placeholder="e.g. 280" />
@@ -229,6 +310,19 @@ export function BillPage() {
 
       {latestBill && <BillVsUsageCard key={latestBill.id} bill={latestBill} />}
 
+      <input ref={attachRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" hidden onChange={(e) => void attachToExisting(e.target.files?.[0])} />
+      {viewing && bills.find((x) => x.id === viewing) && (
+        <BillDocumentViewer
+          bill={bills.find((x) => x.id === viewing)!}
+          onClose={() => setViewing(null)}
+          onRemove={() => {
+            const id = viewing;
+            setViewing(null);
+            void removeDocument(id).then((err) => setRowError(err ? { id, message: err } : null));
+          }}
+        />
+      )}
+
       {bills.length > 0 && (
         <section className="card" aria-label="Bill history">
           <div className="card__head"><h2 className="card__title">Bill history</h2></div>
@@ -245,14 +339,28 @@ export function BillPage() {
                     <TrashIcon />
                   </button>
                 </div>
-                <button
-                  type="button"
-                  className="btn-link bill-hist__toggle"
-                  aria-expanded={openBill === b.id}
-                  onClick={() => setOpenBill(openBill === b.id ? null : b.id)}
-                >
-                  {openBill === b.id ? 'Hide breakdown' : 'Where the money went'}
-                </button>
+                <div className="bill-hist__actions">
+                  <button
+                    type="button"
+                    className="btn-link bill-hist__toggle"
+                    aria-expanded={openBill === b.id}
+                    onClick={() => setOpenBill(openBill === b.id ? null : b.id)}
+                  >
+                    {openBill === b.id ? 'Hide breakdown' : 'Where the money went'}
+                  </button>
+                  {b.documentStatus === 'uploading' ? (
+                    <span className="bill-hist__doc-status">Uploading document…</span>
+                  ) : b.hasDocument ? (
+                    <button type="button" className="btn-link bill-hist__toggle" onClick={() => setViewing(b.id)}>
+                      <FileIcon size={14} /> View bill
+                    </button>
+                  ) : (
+                    <button type="button" className="btn-link bill-hist__toggle" onClick={() => { setAttachFor(b.id); attachRef.current?.click(); }}>
+                      <UploadIcon size={14} /> {b.documentStatus === 'failed' ? 'Retry document' : 'Attach bill'}
+                    </button>
+                  )}
+                </div>
+                {rowError?.id === b.id && <p className="form__error" role="alert">{rowError.message}</p>}
                 {openBill === b.id && <BillCostSplit billId={b.id} />}
               </div>
             ))}

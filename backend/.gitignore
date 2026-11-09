@@ -20,3 +20,6 @@ build/
 
 # Superseded tests that talked to the real broker / database
 _legacy_unsafe_tests/
+
+# Uploaded bill documents (personal data)
+uploads/

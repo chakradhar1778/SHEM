@@ -43,6 +43,14 @@ Day breakdowns: `GET /api/insights/today?date=YYYY-MM-DD` (any past local date) 
 * Budget conflicts and recommendations use this projection, so simulated appliances count. A bill whose amount is far from what the tariff predicts for its units is flagged, as is a budget below the fixed charge.
 * The AI tools `get_bill_projection` and `get_tariff` expose it, and the AI snapshot includes the projected bill.
 
+## Bill documents
+
+A photo or PDF of a bill can be stored with it and viewed later. SHEM never reads its contents (no OCR).
+
+* `PUT /api/bills/{id}/document?filename=…`: the raw file is the body, with `Content-Type` set to `image/jpeg`, `image/png`, `image/webp` or `application/pdf`. Max `MAX_BILL_DOCUMENT_MB` (10). The type is checked against the file's own bytes, so a mislabelled file is refused (415).
+* `GET /api/bills/{id}/document` (inline, API key required) and `DELETE /api/bills/{id}/document`. Deleting a bill deletes its file.
+* Files are stored in `UPLOADS_DIR/bills/<bill-id>.<ext>` (default `./uploads`, git-ignored because bills hold personal data). Back this folder up together with `shem.db`.
+
 ## SHEM AI (energy guide)
 
 Set `GEMINI_API_KEY` and/or `GROQ_API_KEY` ([Groq](https://console.groq.com/keys)) in `.env`. Both are called through the OpenAI SDK; `AI_PRIMARY_PROVIDER` is tried first and the other provider takes over on any error (mid-stream too: the client gets `fallback` + `reset` events).
@@ -66,7 +74,7 @@ Endpoints are under `/api/ai/*` (see `app/api/ai.py`). Streaming uses `POST /api
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest                                   # 171 tests, ~12 s
+python -m pytest                                   # 181 tests, ~12 s
 python -m pytest --cov=app --cov-report=term-missing
 ```
 
@@ -89,6 +97,7 @@ Every test runs against a temporary SQLite file with a fake or mocked MQTT clien
 | `test_voice` | Live voice: sentence chunking and speech cleanup, full WS session with fake Sarvam (transcript, tools, UI, ordered audio, Hindi), interrupt, auth, REST voice endpoints, and the Sarvam REST/realtime wire format against local mocks |
 | `test_simulation` | simulated appliances: power profiles, routine and override expiry, programme auto-off, energy integration, metered + simulated insights, any-date breakdown, day totals |
 | `test_billing` | slab/fixed/fuel/duty maths and inverse, billing-cycle dates, tariff API validation, projection from metered + simulated energy, budget kWh, budget conflicts counting simulated appliances, bill check against the tariff model |
+| `test_bill_documents` | upload/view/replace/delete, type sniffing (mislabelled files refused), size limit, API key required, file removed with its bill |
 | `test_schema_migration` | automatic column upgrade, SPA vs API routing |
 
 ## API conventions

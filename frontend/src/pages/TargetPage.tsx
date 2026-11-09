@@ -5,7 +5,7 @@ import { useBill } from '../hooks/useBill';
 import { useInventory } from '../hooks/useInventory';
 import { useHomeConfig } from '../hooks/useHomeConfig';
 import { useApiQuery } from '../hooks/useApiQuery';
-import { fetchInsights } from '../api/insightsApi';
+import { fetchBillProjection } from '../api/billingApi';
 import { TARGET_CONSTRAINTS } from '../context/targetContextDef';
 import { evaluateTarget } from '../utils/targetEvaluation';
 import { PageHero } from '../components/art/PageHero';
@@ -16,17 +16,37 @@ import './TargetPage.css';
 
 const TONE_COLOR = { green: '#1FA971', amber: '#E9A33A', red: '#E5484D', blue: '#3B6FE0', gray: '#3B6FE0' } as const;
 
-/** Energy target: set a monthly goal, then see how the month is going against it. */
+function cyclePeriodLabel(start: string, endExclusive: string): string {
+  const s = new Date(`${start}T12:00:00`);
+  const e = new Date(`${endExclusive}T12:00:00`);
+  e.setDate(e.getDate() - 1);
+  const f = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+  return `${f(s)} – ${f(e)}`;
+}
+
+/** Energy target: set a monthly goal, then see how the current billing cycle is going against it. */
 export function TargetPage() {
   const navigate = useNavigate();
   const { target, saveTarget, validateAmount } = useTarget();
   const { bills, latestBill } = useBill();
   const { inventory } = useInventory();
   const { config } = useHomeConfig();
-  const { data: month } = useApiQuery(() => fetchInsights('month'), 'target-month', 120_000);
+  const { data: cycle } = useApiQuery(fetchBillProjection, 'target-cycle', 120_000);
 
   const [periodId, setPeriodId] = useState('current');
-  const measured = month ? { kwh: month.totalKWh, hasData: month.hasData, dataNote: month.dataNote } : null;
+  // Progress is measured over the current BILLING CYCLE (meter-reading day), priced with the tariff model.
+  const measured = cycle
+    ? {
+        kwh: cycle.usedKWh,
+        hasData: cycle.usedKWh > 0,
+        dataNote: cycle.confidence === 'low' ? 'Early in the cycle, so the projection is rough.' : null,
+        costINR: cycle.soFar.totalINR,
+        projectedINR: cycle.projected.totalINR,
+        daysLeft: Math.max(0, Math.ceil(cycle.daysLeft)),
+        periodLabel: cyclePeriodLabel(cycle.cycleStart, cycle.cycleEnd),
+        includesSimulated: cycle.simulatedKWh > 0,
+      }
+    : null;
   const ev = evaluateTarget(target, bills, latestBill, inventory, periodId, measured, config.tariffRateINR);
 
   const [editing, setEditing] = useState(!target.isConfigured);

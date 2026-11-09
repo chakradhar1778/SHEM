@@ -308,11 +308,20 @@ class ElectricityBill(Base):
     units_consumed_kwh: Mapped[float] = mapped_column(Float)
     bill_amount_inr: Mapped[float] = mapped_column(Float)
     location_tag: Mapped[Optional[str]] = mapped_column(String(128))
+    # Stored bill document (image/PDF) — kept for viewing only, never parsed.
+    document_path: Mapped[Optional[str]] = mapped_column(String(255))        # relative to UPLOADS_DIR
+    document_content_type: Mapped[Optional[str]] = mapped_column(String(64))
+    document_size: Mapped[Optional[int]] = mapped_column(Integer)
+    document_uploaded_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     __table_args__ = (
         Index("ix_bills_year_month", "billing_year", "billing_month"),
     )
+
+    @property
+    def has_document(self) -> bool:
+        return bool(self.document_path)
 
 
 class EnergyTarget(Base):

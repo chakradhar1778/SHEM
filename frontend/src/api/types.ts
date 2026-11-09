@@ -185,6 +185,11 @@ export interface BillDTO {
   unitsConsumedKWh: number;
   billAmountINR: number;
   locationTag: string | null;
+  /** A bill document (image/PDF) is stored and can be viewed */
+  hasDocument: boolean;
+  documentContentType: string | null;
+  documentSize: number | null;
+  documentUploadedAt: string | null;
   createdAt: string | null;
 }
 

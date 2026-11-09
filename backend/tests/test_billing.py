@@ -259,3 +259,18 @@ def test_recorded_daily_needs_enough_hours(client, frozen):
         db.commit()
     r = client.get(f"/api/billing/bills/{bill['id']}/appliances", headers=AUTH).json()
     assert r["recordedDailyKWh"] is None and r["variancePercent"] is None and r["billedDailyKWh"] == 10.0
+
+
+
+# ── item 5: billing-cycle alignment ────────────────────────────────────────────
+
+def test_insights_bill_comparison_uses_bill_period(client, frozen):
+    put_tariff(client, billingCycleDay=14)
+    # Month bill → cycle 14 Feb – 13 Mar (28 days); a newer bill entered with dates only must win.
+    client.post("/api/bills", headers=AUTH, json={"billingMonth": 1, "billingYear": 2026,
+                                                  "unitsConsumedKWh": 310, "billAmountINR": 2400})
+    client.post("/api/bills", headers=AUTH, json={"billingPeriodStart": "2026-02-14", "billingPeriodEnd": "2026-03-13",
+                                                  "unitsConsumedKWh": 280, "billAmountINR": 2240})
+    bc = client.get("/api/insights?period=week", headers=AUTH).json()["billComparison"]
+    assert bc["billDailyKWh"] == 10.0 and bc["billRateINR"] == 8.0
+    assert bc["billingLabel"] == "14 Feb – 13 Mar 2026"

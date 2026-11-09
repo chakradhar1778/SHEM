@@ -1,6 +1,14 @@
 import React, { useState, useMemo, useCallback, useLayoutEffect, useRef } from 'react';
 import { errorMessage, newId } from '../api/backendApi';
-import { createBill, deleteBill as apiDeleteBill, fetchBills, updateBill as apiUpdateBill, type BillWrite } from '../api/billsApi';
+import {
+  createBill,
+  deleteBill as apiDeleteBill,
+  deleteBillDocument,
+  fetchBills,
+  updateBill as apiUpdateBill,
+  uploadBillDocument,
+  type BillWrite,
+} from '../api/billsApi';
 import type { BillDTO } from '../api/types';
 import {
   BillContext,
@@ -47,6 +55,9 @@ function fromDTO(dto: BillDTO): BillRecord {
     dueDate: dto.dueDate ?? undefined,
     locationTag: dto.locationTag || 'my_home',
     documentFilename: dto.documentFilename ?? undefined,
+    hasDocument: dto.hasDocument ?? false,
+    documentContentType: dto.documentContentType ?? undefined,
+    documentSize: dto.documentSize ?? undefined,
     createdAt: dto.createdAt ? Date.parse(dto.createdAt) : Date.now(),
   };
 }
@@ -107,7 +118,36 @@ export function BillProvider({ children }: { children: React.ReactNode }) {
 
   const latestBill = useMemo<BillRecord | null>(() => (bills.length > 0 ? bills[0] : null), [bills]);
 
-  const addBill = (input: BillInput): BillRecord | null => {
+  // Bill creations in flight: a document upload for that bill waits for it.
+  const pendingCreates = useRef<Map<string, Promise<unknown>>>(new Map());
+
+  const patchBill = (id: string, patch: Partial<BillRecord>) =>
+    setBills((prev) => prev.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+
+  const attachDocument = async (id: string, file: File): Promise<string | null> => {
+    patchBill(id, { documentStatus: 'uploading' });
+    try {
+      await pendingCreates.current.get(id);
+      const dto = await uploadBillDocument(id, file);
+      setBills((prev) => sortBills(prev.map((b) => (b.id === dto.id ? fromDTO(dto) : b))));
+      return null;
+    } catch (e) {
+      patchBill(id, { documentStatus: 'failed' });
+      return errorMessage(e);
+    }
+  };
+
+  const removeDocument = async (id: string): Promise<string | null> => {
+    try {
+      const dto = await deleteBillDocument(id);
+      setBills((prev) => sortBills(prev.map((b) => (b.id === dto.id ? fromDTO(dto) : b))));
+      return null;
+    } catch (e) {
+      return errorMessage(e);
+    }
+  };
+
+  const addBill = (input: BillInput, file?: File | null): BillRecord | null => {
     const validation = validateBillData(input);
     if (!validation.isValid) {
       console.warn('Invalid bill input data:', validation.errors);
@@ -139,12 +179,20 @@ export function BillProvider({ children }: { children: React.ReactNode }) {
     };
 
     setBills((prev) => sortBills([record, ...prev]));
-    createBill(toWrite(record))
+    const created = createBill(toWrite(record))
       .then((dto) => {
         setBills((prev) => sortBills(prev.map((b) => (b.id === dto.id ? fromDTO(dto) : b))));
         setError(null);
-      })
-      .catch(syncFailed('save the bill'));
+      });
+    pendingCreates.current.set(record.id, created.catch(() => undefined));
+    created
+      .catch(syncFailed('save the bill'))
+      .finally(() => pendingCreates.current.delete(record.id));
+    if (file) {
+      void created.then(() => attachDocument(record.id, file)).then((err) => {
+        if (err) setError(`The bill was saved, but its document could not be stored: ${err}`);
+      }).catch(() => undefined);
+    }
     return record;
   };
 
@@ -203,6 +251,8 @@ export function BillProvider({ children }: { children: React.ReactNode }) {
         bills,
         latestBill,
         addBill,
+        attachDocument,
+        removeDocument,
         updateBill,
         deleteBill,
         selectedLocation,

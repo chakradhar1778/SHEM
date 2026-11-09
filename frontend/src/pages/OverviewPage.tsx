@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { fetchBillProjection } from '../api/billingApi';
 import { fetchInsights, fetchTodayInsights } from '../api/insightsApi';
 import { useApiQuery } from '../hooks/useApiQuery';
 import { useBill } from '../hooks/useBill';
@@ -35,11 +36,21 @@ export function OverviewPage() {
   const breakdown = (range === 'today' ? today?.applianceUsage : month?.applianceUsage) ?? [];
   const breakdownTotal = range === 'today' ? today : month;
 
-  const { day, total } = daysInfo();
+  // Budget tiles follow the BILLING CYCLE (meter-reading day) and the tariff model, like the bill itself.
+  const { data: cycle } = useApiQuery(fetchBillProjection, 'home-cycle', 60_000);
+  const day = cycle ? Math.max(1, Math.ceil(cycle.elapsedDays)) : daysInfo().day;
+  const total = cycle ? cycle.cycleDays : daysInfo().total;
   const budget = target.isConfigured ? target.monthlyBudgetINR : null;
-  const consumed = month?.totalKWh ?? null;
-  const spent = month?.totalCostINR ?? null;
+  const consumed = cycle?.usedKWh ?? null;
+  const spent = cycle?.soFar.totalINR ?? null;
   const remaining = budget != null && spent != null ? budget - spent : null;
+  const cycleLabel = cycle
+    ? `${new Date(`${cycle.cycleStart}T12:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} – ${(() => {
+        const e = new Date(`${cycle.cycleEnd}T12:00:00`);
+        e.setDate(e.getDate() - 1);
+        return e.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      })()}`
+    : null;
 
   const status = isLive
     ? 'LIVE POWER'
@@ -108,9 +119,9 @@ export function OverviewPage() {
         )}
       </section>
 
-      <section className="card" aria-label="This month">
+      <section className="card" aria-label="This bill cycle">
         <div className="card__head">
-          <h2 className="card__title">This month</h2>
+          <h2 className="card__title">This bill cycle{cycleLabel && <span className="card__title-sub"> · {cycleLabel}</span>}</h2>
           <Link to="/insights" className="link-more">View details <ArrowIcon size={14} /></Link>
         </div>
         <div className="tile-grid">

@@ -126,6 +126,10 @@ class Settings(BaseSettings):
     # app at "/", so a single tunnel URL hosts both UI and API (no CORS needed).
     frontend_dist_path: str = "../frontend/dist"
 
+    # Uploaded bill documents (images/PDFs, viewing only)
+    uploads_dir: str = "./uploads"
+    max_bill_document_mb: float = 10.0
+
     # ── Server ─────────────────────────────────────────────────
     host: str = "127.0.0.1"
     port: int = 8000

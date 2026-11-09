@@ -13,11 +13,23 @@ export type TargetStatus =
 
 export type TargetDataSource = 'ACTUAL_BILL' | 'MEASURED_METER' | 'ESTIMATED_INVENTORY' | 'NONE';
 
-/** Month-to-date energy measured by the SHEM meter (from GET /api/insights?period=month). */
+/**
+ * Usage so far in the current period. From GET /api/billing/projection it is the BILLING CYCLE
+ * (metered + simulated, priced with the tariff model); the optional fields carry that.
+ */
 export interface MeasuredMonth {
   kwh: number;
   hasData: boolean;
   dataNote?: string | null;
+  /** Cost so far from the tariff model (slabs, fixed charge pro-rated …); default kWh × tariff */
+  costINR?: number;
+  /** Projected full-period bill; default straight-line pace × days in the calendar month */
+  projectedINR?: number;
+  daysLeft?: number;
+  /** e.g. "14 Oct – 13 Nov" */
+  periodLabel?: string;
+  /** Part of the energy comes from simulated appliances */
+  includesSimulated?: boolean;
 }
 
 export interface TargetTrendPoint {
@@ -320,19 +332,25 @@ export function evaluateTarget(
       1 / 24,
       (now.getTime() - new Date(currentYear, currentMonth - 1, 1).getTime()) / 86_400_000
     );
-    const mtdCost = measured.kwh * tariffRate;
-    const projectedCost = (mtdCost / elapsedDays) * daysInMonth;
+    const isCycle = measured.periodLabel != null;
+    const periodName = isCycle ? `bill cycle ${measured.periodLabel}` : currentMonthLabel;
+    const periodWord = isCycle ? 'cycle' : 'month';
+    const mtdCost = measured.costINR ?? measured.kwh * tariffRate;
+    const projectedCost = measured.projectedINR ?? (mtdCost / elapsedDays) * daysInMonth;
     const projectedRatio = projectedCost / targetINR;
     const usedKWh = Number(measured.kwh.toFixed(2));
     const currentCost = Math.round(mtdCost);
     const percentUsed = Math.round((mtdCost / targetINR) * 100);
     const alreadyOver = mtdCost > targetINR;
-    const sourceLabel = `Measured by your SHEM meter (${currentMonthLabel}, month to date)`;
-    const rateDisclosure = `*Energy is metered by the PZEM-004T; cost is estimated at your tariff of ₹${tariffRate.toFixed(2)}/kWh. Month-end projection ≈ ₹${Math.round(projectedCost).toLocaleString('en-IN')} at the current pace.${measured.dataNote ? ` ${measured.dataNote}` : ''}`;
+    const what = measured.includesSimulated ? 'Metered + simulated usage' : 'Measured by your SHEM meter';
+    const sourceLabel = `${what} (${periodName}, to date)`;
+    const rateDisclosure = isCycle
+      ? `*Cost uses your tariff settings (slabs, fuel adjustment, duty, fixed charge). Projected bill for this cycle ≈ ₹${Math.round(projectedCost).toLocaleString('en-IN')} at the current pace.${measured.dataNote ? ` ${measured.dataNote}` : ''}`
+      : `*Energy is metered by the PZEM-004T; cost is estimated at your tariff of ₹${tariffRate.toFixed(2)}/kWh. Month-end projection ≈ ₹${Math.round(projectedCost).toLocaleString('en-IN')} at the current pace.${measured.dataNote ? ` ${measured.dataNote}` : ''}`;
     const base = {
       dataSource: 'MEASURED_METER' as const,
       dataSourceLabel: sourceLabel,
-      periodLabel: `${currentMonthLabel} (Metered)`,
+      periodLabel: isCycle ? `Bill cycle ${measured.periodLabel}` : `${currentMonthLabel} (Metered)`,
       isHistoricalPeriod: false,
       isCycleCompleted: false,
       rateDisclosure,
@@ -343,7 +361,7 @@ export function evaluateTarget(
       budgetLeftINR: Math.max(0, targetINR - currentCost),
       overBudgetINR: Math.max(0, currentCost - targetINR),
       percentUsed,
-      daysLeft: getDaysRemainingInCurrentMonth(),
+      daysLeft: measured.daysLeft ?? getDaysRemainingInCurrentMonth(),
       historicalNotice: latestBill
         ? `Latest bill on file: ${latestBill.billingPeriod || formatPeriodLabel(latestBill.billingMonth, latestBill.billingYear)} (₹${latestBill.billAmount.toLocaleString('en-IN')}). Current progress uses metered data.`
         : undefined,
@@ -356,8 +374,8 @@ export function evaluateTarget(
         status: 'WITHIN_TARGET',
         statusColor: 'green',
         headline: "Great! You're within your target",
-        subtitle: `You've used ${usedKWh} kWh (≈ ₹${currentCost.toLocaleString('en-IN')}) so far this month.`,
-        guidanceText: `At this pace the month ends around ₹${Math.round(projectedCost).toLocaleString('en-IN')} — comfortably under your ₹${targetINR.toLocaleString('en-IN')} target.`,
+        subtitle: `You've used ${usedKWh} kWh (≈ ₹${currentCost.toLocaleString('en-IN')}) so far this ${periodWord}.`,
+        guidanceText: `At this pace the ${periodWord} ends around ₹${Math.round(projectedCost).toLocaleString('en-IN')} — comfortably under your ₹${targetINR.toLocaleString('en-IN')} target.`,
       };
     }
     if (!alreadyOver && projectedRatio <= TARGET_THRESHOLDS.ON_TRACK_MAX_RATIO) {
@@ -366,8 +384,8 @@ export function evaluateTarget(
         status: 'ON_TRACK',
         statusColor: 'amber',
         headline: "You're on track",
-        subtitle: `You've used ${usedKWh} kWh (≈ ₹${currentCost.toLocaleString('en-IN')}) so far this month.`,
-        guidanceText: `At this pace the month ends around ₹${Math.round(projectedCost).toLocaleString('en-IN')}, close to your target. Trimming the largest loads keeps you safe.`,
+        subtitle: `You've used ${usedKWh} kWh (≈ ₹${currentCost.toLocaleString('en-IN')}) so far this ${periodWord}.`,
+        guidanceText: `At this pace the ${periodWord} ends around ₹${Math.round(projectedCost).toLocaleString('en-IN')}, close to your target. Trimming the largest loads keeps you safe.`,
       };
     }
     return {
@@ -376,8 +394,8 @@ export function evaluateTarget(
       statusColor: 'red',
       headline: alreadyOver ? "You've exceeded your target" : 'On course to exceed your target',
       subtitle: alreadyOver
-        ? `Metered use this month (≈ ₹${currentCost.toLocaleString('en-IN')}) is already above your ₹${targetINR.toLocaleString('en-IN')} target.`
-        : `At this pace the month ends around ₹${Math.round(projectedCost).toLocaleString('en-IN')}, above your target.`,
+        ? `Usage this ${periodWord} (≈ ₹${currentCost.toLocaleString('en-IN')}) is already above your ₹${targetINR.toLocaleString('en-IN')} target.`
+        : `At this pace the ${periodWord} ends around ₹${Math.round(projectedCost).toLocaleString('en-IN')}, above your target.`,
       guidanceText: "Let's bring it back on track. See the Energy Guide for the loads driving your usage.",
     };
   }

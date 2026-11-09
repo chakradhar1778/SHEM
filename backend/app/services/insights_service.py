@@ -24,7 +24,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.models.db_models import Appliance, ElectricityBill, EnergyTarget, HouseholdConfig, TelemetryRow
+from app.models.db_models import Appliance, ElectricityBill, EnergyTarget, TelemetryRow
 from app.models.schemas import (
     ApplianceUsage,
     BillComparison,
@@ -83,10 +83,9 @@ MIN_SAMPLES = 30
 # ── Shared lookups ─────────────────────────────────────────────────────────────
 
 def _tariff(db: Session) -> float:
-    cfg = db.get(HouseholdConfig, 1)
-    if cfg and cfg.tariff_rate_inr_per_kwh and cfg.tariff_rate_inr_per_kwh > 0:
-        return cfg.tariff_rate_inr_per_kwh
-    return settings.default_tariff_rate_inr_per_kwh
+    """₹/kWh for cost estimates: the flat rate, or the blended slab rate at this cycle's projected usage."""
+    from app.services.billing_service import cost_rate
+    return cost_rate(db)
 
 
 def _target(db: Session) -> Tuple[bool, Optional[float]]:
@@ -102,13 +101,21 @@ def _days_in_local_month(now: datetime) -> int:
 
 
 def _daily_target_kwh(db: Session, now: datetime, tariff: float) -> Optional[float]:
+    """Budget → kWh per billing cycle under the configured tariff (slabs, fixed charge …) → per day."""
+    from app.services.billing_service import budget_kwh, cycle_days, load_tariff
     configured, budget = _target(db)
     if not configured or not budget:
         return None
-    return (budget / tariff) / _days_in_local_month(now)
+    return budget_kwh(db, budget) / cycle_days(now, load_tariff(db))
 
 
-def _rate_disclosure(tariff: float) -> str:
+def _rate_disclosure(tariff: float, db: Optional[Session] = None) -> str:
+    if db is not None:
+        from app.services.billing_service import load_tariff
+        if not load_tariff(db).is_plain_flat:
+            return (f"Estimated cost uses your tariff settings: ₹{tariff:.2f}/kWh blended (slabs, fuel adjustment "
+                    "and duty at this cycle's projected usage). Fixed charges are in the projected bill; this is "
+                    "not the utility's bill.")
     return (f"Estimated cost uses your configured tariff of ₹{tariff:.2f}/kWh; "
             "it is not a utility billing calculation.")
 
@@ -378,7 +385,7 @@ def compute_insights(db: Session, period: str = "week", device_id: Optional[str]
     return InsightsResponse(
         period=period, period_label=win.label, period_start=win.start, period_end=win.end,
         total_kwh=round(total, 3), total_cost_inr=round(total * tariff, 2), effective_rate_inr=tariff,
-        rate_disclosure=_rate_disclosure(tariff), has_data=bool(energy),
+        rate_disclosure=_rate_disclosure(tariff, db), has_data=bool(energy),
         coverage_hours=coverage, expected_hours=round(expected, 1),
         data_note=_gap_note(coverage, expected), methodology_note=_methodology(),
         key_insight=key, trend_points=points,
@@ -561,7 +568,7 @@ def compute_today_insights(db: Session, device_id: Optional[str] = None,
         date=to_local(day0).strftime("%Y-%m-%d"), is_today=is_today, has_data=bool(u.hours),
         energy_today_kwh=round(total, 3), daily_target_kwh=round(daily_target, 2) if daily_target else None,
         is_target_configured=configured, cost_today_inr=round(total * tariff, 2),
-        effective_rate_inr=tariff, rate_disclosure=_rate_disclosure(tariff),
+        effective_rate_inr=tariff, rate_disclosure=_rate_disclosure(tariff, db),
         hourly_points=points, day_periods=periods,
         appliance_breakdown=_category_actuals(appliance_usage) or _appliance_estimates(db, 1),
         insight_card=_day_card(is_today, bool(u.hours), total, daily_target, peak_hour),
@@ -691,20 +698,20 @@ def compute_recommendations(db: Session, device_id: Optional[str] = None) -> Lis
 
     configured, budget = _target(db)
     if configured and budget:
-        m0 = local_month_start(now)
-        month = hourly_stats(db, device_id, m0, now)
-        elapsed_days = (now - m0) / DAY
-        if len(month) >= 24 and elapsed_days >= 1:
-            mtd = sum(s.energy_kwh for s in month.values())
-            projected_cost = mtd / elapsed_days * _days_in_local_month(now) * tariff
-            if projected_cost > budget:
+        # Same metered + simulated totals and tariff model as the dashboard and projected bill.
+        from app.services.billing_service import project_cycle
+        proj = project_cycle(db, now=now)
+        if proj["elapsed_days"] >= 1 and len(proj["usage"].hours) >= 24:
+            projected = proj["projected"].total
+            if projected > budget:
                 recs.append(EnergyRecommendation(
                     id="rec-budget-projection", title="On course to exceed your monthly budget",
                     category="budget", priority="high",
-                    description="At the current pace this month's estimated cost will be above your target. "
+                    description="At the current pace this billing cycle's estimated bill will be above your target. "
                                 "Reducing the largest loads now keeps you within budget.",
-                    evidence=f"{mtd:.1f} kWh in {elapsed_days:.1f} days → projected ₹{projected_cost:.0f} "
-                             f"vs budget ₹{budget:.0f} (estimate at ₹{tariff:.2f}/kWh).",
+                    evidence=f"{proj['used_kwh']:.1f} kWh in {proj['elapsed_days']:.1f} days → projected "
+                             f"{proj['projected_kwh']:.0f} kWh ≈ ₹{projected:.0f} vs budget ₹{budget:.0f} "
+                             f"(estimate from your tariff settings).",
                 ))
 
     heavy_long = db.scalars(

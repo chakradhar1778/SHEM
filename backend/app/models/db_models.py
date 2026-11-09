@@ -201,6 +201,15 @@ class HouseholdConfig(Base):
     floor_area_sqm: Mapped[Optional[float]] = mapped_column(Float)
     utility_provider: Mapped[Optional[str]] = mapped_column(String(128))
     tariff_rate_inr_per_kwh: Mapped[float] = mapped_column(Float, default=7.5)
+    # ── Bill model (see services/billing_service.py) ──
+    # "flat" = every kWh at tariff_rate_inr_per_kwh; "slab" = tariff_slabs_json.
+    tariff_mode: Mapped[str] = mapped_column(String(8), default="flat")
+    # JSON list [{"uptoKWh": 100, "rateINR": 4.15}, …, {"uptoKWh": null, "rateINR": 8.2}] — cumulative upper bounds.
+    tariff_slabs_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    fixed_charge_inr: Mapped[float] = mapped_column(Float, default=0.0)            # per billing cycle
+    fuel_adjustment_inr_per_kwh: Mapped[float] = mapped_column(Float, default=0.0)  # FPPCA / FAC
+    electricity_duty_percent: Mapped[float] = mapped_column(Float, default=0.0)     # on energy + fuel charges
+    billing_cycle_day: Mapped[int] = mapped_column(Integer, default=1)              # meter-reading day, 1–28
     # True once the user has completed the Home Setup flow
     is_configured: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)

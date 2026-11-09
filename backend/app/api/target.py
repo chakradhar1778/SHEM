@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.db_models import EnergyTarget
 from app.models.schemas import EnergyTargetSchema, EnergyTargetUpdate
-from app.services.insights_service import _tariff
+from app.services.billing_service import budget_kwh
 from app.utils.timestamps import utcnow
 
 router = APIRouter()
@@ -34,7 +34,7 @@ def _get_or_create(db: Session) -> EnergyTarget:
 def _to_schema(db: Session, target: EnergyTarget) -> EnergyTargetSchema:
     out = EnergyTargetSchema.model_validate(target)
     if target.is_configured:
-        out.monthly_target_kwh = round(target.monthly_budget_inr / _tariff(db), 2)
+        out.monthly_target_kwh = round(budget_kwh(db, target.monthly_budget_inr), 2)
     return out
 
 

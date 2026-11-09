@@ -298,6 +298,23 @@ def t_today(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+@tool("get_bill_projection",
+      "Current billing cycle (from the meter-reading day): kWh so far (metered + simulated), the bill so far, "
+      "the PROJECTED bill itemised by slab with fixed charge, fuel adjustment and duty, the current slab and kWh "
+      "left before the next one, and projected vs budget. Use for any 'what will my bill be' question.",
+      label="Projecting your bill")
+def t_bill_projection(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    from app.api.billing import build_projection
+    return _dump(build_projection(ctx.db))
+
+
+@tool("get_tariff", "Tariff settings used for every cost: flat or slab rates, fixed charge, fuel adjustment, "
+      "electricity duty and billing-cycle day.", label="Reading tariff")
+def t_get_tariff(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    from app.api.billing import get_tariff
+    return _dump(get_tariff(ctx.db))
+
+
 @tool("get_recommendations", "Data-driven saving recommendations with the evidence for each.",
       label="Finding savings")
 def t_recs(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:

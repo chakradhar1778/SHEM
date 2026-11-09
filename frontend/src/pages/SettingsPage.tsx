@@ -6,20 +6,16 @@ import type { HealthResponse } from '../api/types';
 import { useHomeConfig } from '../hooks/useHomeConfig';
 import { useLiveData } from '../hooks/useLiveData';
 import { PageHero } from '../components/art/PageHero';
+import { TariffEditor } from '../components/bill/TariffEditor';
 import { ChevronRight, HomeTypeIcon } from '../components/ui/icons';
 import { formatAge, formatDateTime } from '../utils/liveFormat';
 import './SettingsPage.css';
 
-/** Settings: electricity rate, backend connection and live diagnostics. (Home details live in Configure home.) */
+/** Settings: electricity tariff, backend connection and live diagnostics. (Home details live in Configure home.) */
 export function SettingsPage() {
   const initial = getConnection();
-  const { config, updateConfig } = useHomeConfig();
+  const { config } = useHomeConfig();
   const live = useLiveData();
-
-  const [tariff, setTariff] = useState(String(config.tariffRateINR));
-  const [tariffSaved, setTariffSaved] = useState(false);
-  const tariffNum = Number(tariff);
-  const tariffValid = Number.isFinite(tariffNum) && tariffNum > 0 && tariffNum <= 100;
 
   const [baseUrl, setBaseUrl] = useState(initial.baseUrl);
   const [apiKey, setApiKey] = useState(initial.apiKey);
@@ -28,12 +24,6 @@ export function SettingsPage() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [healthError, setHealthError] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
-
-  const saveTariff = () => {
-    updateConfig({ tariffRateINR: tariffNum });
-    setTariffSaved(true);
-    window.setTimeout(() => setTariffSaved(false), 2000);
-  };
 
   const saveConn = () => {
     saveConnection({ baseUrl, apiKey });
@@ -78,18 +68,7 @@ export function SettingsPage() {
           <span className="row__end">Configure <ChevronRight /></span>
         </Link>
 
-        <section className="settings__block">
-          <h2 className="card__title">Electricity rate</h2>
-          <p className="sheet__hint">Used to estimate cost from measured kWh. Not a utility bill calculation.</p>
-          <label className="form__field">
-            <span className="form__label">Rate (₹ per kWh)</span>
-            <input className="form__input" type="number" inputMode="decimal" min="0.1" max="100" step="0.05" value={tariff} onChange={(e) => setTariff(e.target.value)} />
-          </label>
-          {!tariffValid && <p className="form__error">Enter a rate between ₹0.1 and ₹100.</p>}
-          <button type="button" className="btn btn--primary btn--small settings__btn" disabled={!tariffValid || tariffNum === config.tariffRateINR} onClick={saveTariff}>
-            {tariffSaved ? '✓ Saved' : 'Save rate'}
-          </button>
-        </section>
+        <TariffEditor />
 
         <section className="settings__block">
           <h2 className="card__title">Backend connection</h2>

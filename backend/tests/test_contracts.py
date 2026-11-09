@@ -174,6 +174,18 @@ def test_rest_responses_match_frontend_types(client):
     checks["PeakSummary"] = today["peak"]
     checks["PeriodTopAppliance"] = next(p for p in today["dayPeriods"] if p["topAppliances"])["topAppliances"][0]
 
+    # Billing: tariff + projected bill (with a slab tariff and a budget so every object is present)
+    client.put("/api/billing/tariff", headers=AUTH, json={"mode": "slab", "slabs": [
+        {"uptoKWh": 100, "rateINR": 4}, {"uptoKWh": None, "rateINR": 7}], "fixedChargeINR": 50})
+    client.put("/api/target", headers=AUTH, json={"monthlyBudgetINR": 1500})
+    checks["Tariff"] = client.get("/api/billing/tariff", headers=AUTH).json()
+    checks["TariffSlab"] = checks["Tariff"]["slabs"][0]
+    proj = client.get("/api/billing/projection", headers=AUTH).json()
+    checks["BillProjection"] = proj
+    checks["BillBreakdown"] = proj["projected"]
+    checks["BillLine"] = proj["projected"]["lines"][0]
+    checks["BudgetStatus"] = proj["budget"]
+
     for interface, payload in checks.items():
         assert_matches(interface, payload)
 

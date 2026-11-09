@@ -8,6 +8,7 @@ import { useTarget } from '../hooks/useTarget';
 import { PageHero } from '../components/art/PageHero';
 import { ApplianceUsageList } from '../components/appliances/ApplianceUsageList';
 import { SourceTag } from '../components/appliances/SourceTag';
+import { ProjectedBillCard } from '../components/bill/ProjectedBillCard';
 import { Sparkline } from '../components/ui/Sparkline';
 import { ArrowIcon, BoltIcon, CalendarIcon, ChevronRight, ClockIcon, UploadIcon, WalletIcon } from '../components/ui/icons';
 import { formatRaw } from '../utils/liveFormat';
@@ -145,6 +146,8 @@ export function OverviewPage() {
           </div>
         </div>
       </section>
+
+      <ProjectedBillCard compact />
 
       <section className="card" aria-label="Bill history">
         <div className="card__head">

@@ -33,11 +33,20 @@ The prototype has one relay, so only one appliance can be measured for real. In 
 
 Day breakdowns: `GET /api/insights/today?date=YYYY-MM-DD` (any past local date) returns hourly metered/simulated energy, the night/morning/afternoon/evening split with the peak period, peak hour and top appliances, and per-appliance usage. `GET /api/insights/days?days=14` returns per-day totals for the day strip.
 
+## Billing: tariff and projected bill
+
+`app/services/billing_service.py` prices energy the way a utility bill does: a flat rate or rising **slabs** (cumulative kWh limits per cycle), a **fixed charge** per bill, **fuel adjustment** (₹/kWh) and **electricity duty** (% of energy + fuel charges). The **billing cycle** starts on the meter-reading day (`billingCycleDay`, 1 = calendar month). Set it in **Settings → Electricity tariff**.
+
+* `GET/PUT /api/billing/tariff`, `POST /api/billing/estimate {"kwh": 250}` (itemised bill), and `GET /api/billing/projection`: cycle-to-date metered + simulated kWh and bill, the projected bill at the current pace (the last 24 h when under a day into the cycle), current slab and kWh left before the next one, budget status, and a confidence level.
+* All cost estimates use the same model: the flat rate, or with slabs the blended variable rate at this cycle's projected usage. The budget's kWh is the inverse of the bill (fixed charge included).
+* Budget conflicts and recommendations use this projection, so simulated appliances count. A bill whose amount is far from what the tariff predicts for its units is flagged, as is a budget below the fixed charge.
+* The AI tools `get_bill_projection` and `get_tariff` expose it, and the AI snapshot includes the projected bill.
+
 ## SHEM AI (energy guide)
 
 Set `GEMINI_API_KEY` and/or `GROQ_API_KEY` ([Groq](https://console.groq.com/keys)) in `.env`. Both are called through the OpenAI SDK; `AI_PRIMARY_PROVIDER` is tried first and the other provider takes over on any error (mid-stream too: the client gets `fallback` + `reset` events).
 
-* **Tools (34)**: read everything (snapshot, telemetry, insights, inventory, bills, target, events, and read-only SQL over the whole DB via `query_database`, which uses a `mode=ro` connection plus an authorizer that permits SELECT only). Write tools reuse the REST validation: relay and appliance on/off, appliances, rooms, bills, target, and household settings. Every write goes to `ai_action_log` and is broadcast as an `ai_action` WebSocket event.
+* **Tools (36)**: read everything (snapshot, telemetry, insights, inventory, bills, target, events, and read-only SQL over the whole DB via `query_database`, which uses a `mode=ro` connection plus an authorizer that permits SELECT only). Write tools reuse the REST validation: relay and appliance on/off, appliances, rooms, bills, target, and household settings. Every write goes to `ai_action_log` and is broadcast as an `ai_action` WebSocket event.
 * **UI components**: the model embeds ```` ```shem-ui {json} ``` ```` blocks. The backend validates them (`app/ai/components.py`) and streams them as `component` events. Follow-ups come in a ```` ```shem-followups ``` ```` block, with rule-based ones as a fallback.
 * **Conflicts** (`app/ai/conflicts.py`, rule-based): declared wattage vs measured power on the relay (e.g. 9 W declared, 480 W measured), load while the relay is OFF, implausible ratings, estimates vs meter, bill ₹/kWh vs tariff, duplicate bills, budget exceeded or at risk, device offline, voltage, invalid readings, and failed relay commands. A scan runs every 60 s and pushes `ai_conflict` events for new conflicts.
 * **Daily insights**: after `AI_DAILY_INSIGHT_HOUR`, yesterday's briefing is generated: metric cards and an hourly chart built from facts, plus an LLM narrative. If no provider is available, a rule-based narrative is used. The result is pushed as an `ai_daily_insight` event.
@@ -56,7 +65,7 @@ Endpoints are under `/api/ai/*` (see `app/api/ai.py`). Streaming uses `POST /api
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest                                   # 160 tests, ~10 s
+python -m pytest                                   # 171 tests, ~12 s
 python -m pytest --cov=app --cov-report=term-missing
 ```
 
@@ -78,6 +87,7 @@ Every test runs against a temporary SQLite file with a fake or mocked MQTT clien
 | `test_ai` | SHEM AI: component stream parsing, read-only SQL guard, write tools + audit log, 9 W-vs-480 W conflict, tool loop, provider fallback, SSE events, daily insights, real SDK stream parsing (mocked HTTP) |
 | `test_voice` | Live voice: sentence chunking and speech cleanup, full WS session with fake Sarvam (transcript, tools, UI, ordered audio, Hindi), interrupt, auth, REST voice endpoints, and the Sarvam REST/realtime wire format against local mocks |
 | `test_simulation` | simulated appliances: power profiles, routine and override expiry, programme auto-off, energy integration, metered + simulated insights, any-date breakdown, day totals |
+| `test_billing` | slab/fixed/fuel/duty maths and inverse, billing-cycle dates, tariff API validation, projection from metered + simulated energy, budget kWh, budget conflicts counting simulated appliances, bill check against the tariff model |
 | `test_schema_migration` | automatic column upgrade, SPA vs API routing |
 
 ## API conventions

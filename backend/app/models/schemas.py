@@ -613,3 +613,92 @@ class EnergyRecommendation(ApiModel):
     category: str
     priority: Literal["high", "medium", "low"]
     evidence: str                           # the measured/user data that triggered it
+
+
+# ── Billing: tariff + projected bill ───────────────────────────────────────────
+
+class TariffSlab(ApiModel):
+    upto_kwh: Optional[float] = Field(None, gt=0, le=1_000_000)   # None = no upper limit (last slab)
+    rate_inr: float = Field(..., ge=0, le=100)
+
+
+class TariffSchema(ApiModel):
+    mode: Literal["flat", "slab"]
+    flat_rate_inr: float
+    slabs: List[TariffSlab] = []
+    fixed_charge_inr: float = 0.0
+    fuel_adjustment_inr_per_kwh: float = 0.0
+    electricity_duty_percent: float = 0.0
+    billing_cycle_day: int = 1
+    utility_provider: Optional[str] = None
+
+
+class TariffUpdate(ApiModel):
+    mode: Optional[Literal["flat", "slab"]] = None
+    flat_rate_inr: Optional[float] = Field(None, gt=0, le=100)
+    slabs: Optional[List[TariffSlab]] = Field(None, max_length=12)
+    fixed_charge_inr: Optional[float] = Field(None, ge=0, le=100_000)
+    fuel_adjustment_inr_per_kwh: Optional[float] = Field(None, ge=0, le=20)
+    electricity_duty_percent: Optional[float] = Field(None, ge=0, le=50)
+    billing_cycle_day: Optional[int] = Field(None, ge=1, le=28)
+
+
+class BillLine(ApiModel):
+    label: str
+    from_kwh: float
+    to_kwh: Optional[float] = None
+    kwh: float
+    rate_inr: float
+    amount_inr: float
+
+
+class BillBreakdownSchema(ApiModel):
+    kwh: float
+    lines: List[BillLine]
+    energy_charge_inr: float
+    fuel_charge_inr: float
+    duty_inr: float
+    fixed_charge_inr: float
+    total_inr: float
+    effective_rate_inr: Optional[float] = None
+    variable_rate_inr: Optional[float] = None
+    marginal_rate_inr: float
+    slab_index: int
+    kwh_to_next_slab: Optional[float] = None
+    next_slab_rate_inr: Optional[float] = None
+
+
+class BudgetStatus(ApiModel):
+    budget_inr: float
+    budget_kwh: float
+    spent_inr: float
+    projected_inr: float
+    projected_over_inr: float
+    used_percent: float
+    remaining_kwh: float
+    daily_allowance_kwh: Optional[float] = None
+    status: Literal["on_track", "at_risk", "over"]
+
+
+class BillProjectionResponse(ApiModel):
+    cycle_start: str                    # local YYYY-MM-DD (inclusive)
+    cycle_end: str                      # local YYYY-MM-DD (exclusive: first day of the next cycle)
+    cycle_days: int
+    elapsed_days: float
+    days_left: float
+    used_kwh: float
+    metered_kwh: float
+    simulated_kwh: float
+    daily_kwh: float
+    projected_kwh: float
+    pace_basis: Literal["cycle", "last24h"]
+    confidence: Literal["low", "medium", "high"]
+    so_far: BillBreakdownSchema
+    projected: BillBreakdownSchema
+    tariff: TariffSchema
+    budget: Optional[BudgetStatus] = None
+    disclaimer: str
+
+
+class BillEstimateRequest(ApiModel):
+    kwh: float = Field(..., ge=0, le=1_000_000)

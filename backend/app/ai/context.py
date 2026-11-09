@@ -54,6 +54,14 @@ def build_snapshot(db: Session, mqtt_connected: bool) -> Dict[str, Any]:
     safe("today", today)
     safe("target", lambda: get_target(db).model_dump(mode="json"))
 
+    def bill():
+        from app.api.billing import build_projection
+        p = build_projection(db)
+        return {"cycle": f"{p.cycle_start} → {p.cycle_end}", "usedKWh": p.used_kwh, "soFarINR": p.so_far.total_inr,
+                "projectedKWh": p.projected_kwh, "projectedINR": p.projected.total_inr, "confidence": p.confidence,
+                "tariffMode": p.tariff.mode, "budgetStatus": p.budget.status if p.budget else None}
+    safe("billProjection", bill)
+
     def household():
         c = get_or_create_config(db)
         return {"homeName": c.home_name, "homeType": c.home_type, "occupants": c.occupants,

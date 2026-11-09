@@ -1,0 +1,19 @@
+.tariff .seg--full { display: flex; background: #EEF2FA; }
+.tariff .seg--full .seg__btn { flex: 1; padding: 9px 8px; }
+.tariff__slabs { display: flex; flex-direction: column; gap: 6px; }
+.tariff__slab { display: grid; grid-template-columns: 1fr 92px 32px; align-items: center; gap: 8px; }
+.tariff__slab--head { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.tariff__range { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tariff__range em { font-style: normal; color: var(--muted); }
+.tariff__num { min-width: 0; width: 100%; padding-top: 8px; padding-bottom: 8px; }
+.tariff__range .tariff__num { max-width: 96px; }
+.tariff__add { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; }
+.tariff__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.tariff__preview { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 16px; background: #F6F8FD; }
+.tariff__preview-in { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.tariff__preview-in .tariff__num { max-width: 90px; }
+.tariff__preview-out { display: flex; flex-direction: column; gap: 2px; }
+.tariff__preview-out b { font-family: var(--font-serif); font-weight: 400; font-size: 24px; color: var(--ink); }
+.tariff__preview-out span { font-size: 11.5px; line-height: 1.4; color: var(--muted); }
+.tariff__preview-note { font-size: 10.5px; color: var(--muted); }
+@media (max-width: 360px) { .tariff__grid { grid-template-columns: 1fr; } }

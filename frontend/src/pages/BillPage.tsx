@@ -5,6 +5,7 @@ import { useInventory } from '../hooks/useInventory';
 import { PageHero } from '../components/art/PageHero';
 import { ArrowIcon, CalendarIcon, ChevronDown, CloseIcon, PlusIcon, SearchIcon, TrashIcon, UploadIcon, UserIcon } from '../components/ui/icons';
 import { RouteToast } from '../components/ui/RouteToast';
+import { ProjectedBillCard } from '../components/bill/ProjectedBillCard';
 import { calculateHouseholdDailyKWh, compareBillWithHousehold, formatCurrencyINR } from '../utils/billMath';
 import './BillPage.css';
 
@@ -104,6 +105,8 @@ export function BillPage() {
     <div className="page">
       <RouteToast />
       <PageHero art="bill" title={<>Your electricity<br />bill</>} subtitle="Bring your bill into SHEM to track usage and costs." />
+
+      <ProjectedBillCard />
 
       <form className="sheet bill" onSubmit={submit} noValidate>
         <label className="bill__field">

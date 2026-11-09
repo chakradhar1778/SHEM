@@ -1,6 +1,7 @@
 # Only the application code is tracked: backend/, frontend/, Main_Code/
 /*
 !/.gitignore
+!/TODO.md
 !/backend/
 !/frontend/
 !/Main_Code/

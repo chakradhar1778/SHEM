@@ -35,8 +35,9 @@ from app.models.db_models import (
 )
 from app.services.device_service import get_device_status
 from app.services.energy_service import hourly_stats
-from app.services.insights_service import _target, _tariff
-from app.utils.timestamps import DAY, local_month_start, to_local, utcnow
+from app.services.billing_service import compute_bill, load_tariff
+from app.services.insights_service import _target
+from app.utils.timestamps import DAY, utcnow
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -165,7 +166,7 @@ def detect_conflicts(db: Session, include_dismissed: bool = False, mqtt_connecte
     device_id = settings.device_id
     now = utcnow()
     out: List[Conflict] = []
-    tariff = _tariff(db)
+    tariff_model = load_tariff(db)
 
     appliances = list(db.scalars(select(Appliance)).all())
     ch = db.scalar(select(RelayChannel).where(RelayChannel.device_id == device_id, RelayChannel.channel == 1))
@@ -259,15 +260,17 @@ def detect_conflicts(db: Session, include_dismissed: bool = False, mqtt_connecte
     seen_periods: Dict[tuple, str] = {}
     for b in bills:
         if b.units_consumed_kwh and b.bill_amount_inr:
-            rate = b.bill_amount_inr / b.units_consumed_kwh
-            if abs(rate - tariff) / tariff > BILL_RATE_TOLERANCE:
+            expected = compute_bill(b.units_consumed_kwh, tariff_model).total
+            if expected > 0 and abs(b.bill_amount_inr - expected) / expected > BILL_RATE_TOLERANCE:
+                rate = b.bill_amount_inr / b.units_consumed_kwh
                 out.append(Conflict(
                     id=f"bill-rate:{b.id}", severity="warning", category="bill",
-                    title="Bill rate differs from your tariff",
-                    message=f"This bill works out to ₹{rate:.2f}/kWh but your tariff is set to ₹{tariff:.2f}/kWh.",
-                    evidence=f"₹{b.bill_amount_inr:g} / {b.units_consumed_kwh:g} kWh",
-                    suggestion="Fix the units/amount on the bill, or update the tariff in household settings "
-                               "(fixed charges and slabs can explain some difference).",
+                    title="Bill amount differs from your tariff",
+                    message=f"Your tariff settings put {b.units_consumed_kwh:g} kWh at about ₹{expected:.0f}, "
+                            f"but this bill is ₹{b.bill_amount_inr:g} (₹{rate:.2f}/kWh).",
+                    evidence=f"₹{b.bill_amount_inr:g} billed vs ₹{expected:.0f} expected",
+                    suggestion="Check the units/amount on the bill, or update the tariff (slabs, fixed charge, "
+                               "fuel adjustment, duty) in Settings to match your bill.",
                     entity_type="bill", entity_id=b.id))
         if b.billing_month and b.billing_year:
             key = (b.billing_year, b.billing_month)
@@ -293,28 +296,33 @@ def detect_conflicts(db: Session, include_dismissed: bool = False, mqtt_connecte
             except ValueError:
                 pass
 
-    # Target
+    # Target — metered + simulated energy priced with the tariff model (same as the projected bill)
     configured, budget = _target(db)
     if configured and budget:
-        month0 = local_month_start(now)
-        mtd_kwh = sum(s.energy_kwh for s in hourly_stats(db, device_id, month0, now).values())
-        mtd_cost = mtd_kwh * tariff
-        loc = to_local(now)
-        from calendar import monthrange
-        days_in_month = monthrange(loc.year, loc.month)[1]
-        elapsed_days = max((now - month0).total_seconds() / 86400, 0.5)
-        projected = mtd_cost / elapsed_days * days_in_month
-        if mtd_cost > budget:
+        from app.services.billing_service import project_cycle
+        proj = project_cycle(db, tariff_model, now=now)
+        spent, projected = proj["so_far"].total, proj["projected"].total
+        if tariff_model.fixed_charge and budget <= tariff_model.fixed_charge:
+            out.append(Conflict(
+                id="target-below-fixed", severity="warning", category="target",
+                title="Budget is below the fixed charge",
+                message=f"Your ₹{budget:.0f} budget doesn't cover the ₹{tariff_model.fixed_charge:.0f} fixed charge "
+                        "on every bill, so it can't be met even with zero usage.",
+                evidence="energy_targets.monthly_budget_inr vs tariff fixed charge",
+                suggestion="Raise the budget, or check the fixed charge in tariff settings.",
+                entity_type="target", entity_id="1"))
+        if spent > budget:
             out.append(Conflict(
                 id="target-exceeded", severity="critical", category="target", title="Monthly budget exceeded",
-                message=f"₹{mtd_cost:.0f} measured this month already exceeds your ₹{budget:.0f} budget.",
-                evidence=f"{mtd_kwh:.2f} kWh × ₹{tariff:.2f}", suggestion="Cut heavy loads or revise the target.",
-                entity_type="target", entity_id="1"))
-        elif elapsed_days >= 3 and projected > budget * 1.1:
+                message=f"₹{spent:.0f} used this billing cycle already exceeds your ₹{budget:.0f} budget.",
+                evidence=f"{proj['used_kwh']:.2f} kWh ({proj['metered_kwh']:.2f} metered + "
+                         f"{proj['simulated_kwh']:.2f} simulated) priced with your tariff",
+                suggestion="Cut heavy loads or revise the target.", entity_type="target", entity_id="1"))
+        elif proj["elapsed_days"] >= 3 and projected > budget * 1.1:
             out.append(Conflict(
                 id="target-at-risk", severity="warning", category="target", title="On course to exceed budget",
-                message=f"At the current pace this month will cost about ₹{projected:.0f} vs a ₹{budget:.0f} budget.",
-                evidence=f"₹{mtd_cost:.0f} in {elapsed_days:.1f} days",
+                message=f"At the current pace this cycle's bill will be about ₹{projected:.0f} vs a ₹{budget:.0f} budget.",
+                evidence=f"₹{spent:.0f} in {proj['elapsed_days']:.1f} days; projected {proj['projected_kwh']:.0f} kWh",
                 suggestion="Ask SHEM AI where to cut usage.", entity_type="target", entity_id="1"))
         min_bill = min((b.bill_amount_inr for b in bills if b.bill_amount_inr), default=None)
         if min_bill and budget < min_bill * 0.4:
@@ -323,10 +331,11 @@ def detect_conflicts(db: Session, include_dismissed: bool = False, mqtt_connecte
                 message=f"₹{budget:.0f}/month is under 40% of your lowest recorded bill (₹{min_bill:.0f}).",
                 evidence="energy_targets vs electricity_bills", entity_type="target", entity_id="1"))
 
-    if not (1 <= tariff <= 25):
+    if tariff_model.mode == "flat" and not (1 <= tariff_model.flat_rate <= 25):
         out.append(Conflict(
             id="tariff-unusual", severity="warning", category="household", title="Unusual tariff",
-            message=f"Tariff is set to ₹{tariff:.2f}/kWh; Indian residential tariffs are usually ₹3–12/kWh.",
+            message=f"Tariff is set to ₹{tariff_model.flat_rate:.2f}/kWh; Indian residential tariffs are usually "
+                    "₹3–12/kWh.",
             evidence="household_config.tariff_rate_inr_per_kwh", suggestion="Check household settings.",
             entity_type="household", entity_id="1"))
 

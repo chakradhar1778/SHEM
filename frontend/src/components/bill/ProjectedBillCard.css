@@ -1,0 +1,49 @@
+.projbill { display: flex; flex-direction: column; gap: 12px; }
+.projbill .card__head { margin-bottom: 0; }
+.projbill__headline { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.projbill__headline > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.projbill__label { font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.projbill__amount { font-family: var(--font-serif); font-weight: 400; font-size: 34px; line-height: 1.1; color: var(--ink); }
+.projbill--compact .projbill__amount { font-size: 28px; }
+.projbill__sub { font-size: 12px; color: var(--muted); }
+.projbill__status { flex: none; padding: 4px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.projbill__status.is-on_track { background: var(--green-soft); color: #168a5b; }
+.projbill__status.is-at_risk { background: var(--amber-soft); color: #9A6410; }
+.projbill__status.is-over { background: var(--red-soft); color: #B4282D; }
+.projbill__conf { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: capitalize; background: #F1F4FA; color: var(--ink-2); }
+.projbill__conf.is-low { background: var(--amber-soft); color: #9A6410; }
+
+.projbill__track { height: 7px; border-radius: 999px; background: #E6ECF7; overflow: hidden; }
+.projbill__track span { display: block; height: 100%; border-radius: 999px; background: var(--blue); }
+.projbill__cycle { display: flex; align-items: center; gap: 10px; font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.projbill__cycle .projbill__track { flex: 1; }
+
+.projbill__tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.projbill__tiles div { display: flex; flex-direction: column; gap: 2px; padding: 10px; border-radius: 14px; background: #F6F8FD; }
+.projbill__tiles b { font-size: 15px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.projbill__tiles span { font-size: 11px; color: var(--muted); }
+.projbill__split { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -4px 0 0; font-size: 12px; color: var(--ink-2); }
+
+.projbill__slab { display: flex; flex-direction: column; gap: 6px; }
+.projbill__slab-bars { display: flex; gap: 4px; }
+.projbill__slab-bars span { flex: 1; padding: 6px 0; border-radius: 8px; text-align: center; font-size: 11px; font-weight: 700; background: #EEF2FA; color: var(--muted); }
+.projbill__slab-bars span.is-full { background: #C9D8F7; color: var(--ink-2); }
+.projbill__slab-bars span.is-now { background: var(--blue); color: #fff; }
+.projbill__slab-bars span.is-proj { background: repeating-linear-gradient(45deg, #FDF0D8, #FDF0D8 6px, #FBE3B5 6px, #FBE3B5 12px); color: #9A6410; }
+.projbill__slab p, .projbill__budget p { margin: 0; font-size: 12px; line-height: 1.45; color: var(--ink-2); }
+
+.projbill__budget { display: flex; flex-direction: column; gap: 6px; padding: 12px; border-radius: 16px; background: var(--green-soft); }
+.projbill__budget.is-at_risk { background: var(--amber-soft); }
+.projbill__budget.is-over { background: var(--red-soft); }
+.projbill__budget .projbill__track { background: rgba(255, 255, 255, 0.7); }
+.projbill__budget.is-on_track .projbill__track span { background: var(--green); }
+.projbill__budget.is-at_risk .projbill__track span { background: var(--amber); }
+.projbill__budget.is-over .projbill__track span { background: var(--red); }
+.projbill__budget-row { display: flex; justify-content: space-between; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+
+.projbill__items summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--blue); }
+.projbill__table { width: 100%; margin-top: 8px; border-collapse: collapse; font-size: 12.5px; }
+.projbill__table td { padding: 7px 0; border-bottom: 1px solid var(--line); color: var(--ink-2); vertical-align: top; }
+.projbill__table td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.projbill__table small { display: block; font-size: 11px; color: var(--muted); }
+.projbill__table tr.is-total td { border-bottom: none; font-weight: 700; color: var(--ink); }

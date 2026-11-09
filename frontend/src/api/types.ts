@@ -418,3 +418,81 @@ export type StreamEvent =
   | { type: 'ai_action'; data: AIActionEvent; sentAt: string }
   | { type: 'ai_conflict'; data: { conflicts: Conflict[] }; sentAt: string }
   | { type: 'ai_daily_insight'; data: DailyInsight; sentAt: string };
+
+// ── Billing: tariff + projected bill ──────────────────────────────────────────
+
+export interface TariffSlab {
+  /** Cumulative upper bound in the cycle; null = no limit (last slab) */
+  uptoKWh: number | null;
+  rateINR: number;
+}
+
+export interface Tariff {
+  mode: 'flat' | 'slab';
+  flatRateINR: number;
+  slabs: TariffSlab[];
+  fixedChargeINR: number;
+  fuelAdjustmentINRPerKWh: number;
+  electricityDutyPercent: number;
+  /** Meter-reading day that starts each billing cycle (1 = calendar month) */
+  billingCycleDay: number;
+  utilityProvider: string | null;
+}
+
+export interface BillLine {
+  label: string;
+  fromKWh: number;
+  toKWh: number | null;
+  kwh: number;
+  rateINR: number;
+  amountINR: number;
+}
+
+export interface BillBreakdown {
+  kwh: number;
+  lines: BillLine[];
+  energyChargeINR: number;
+  fuelChargeINR: number;
+  dutyINR: number;
+  fixedChargeINR: number;
+  totalINR: number;
+  effectiveRateINR: number | null;
+  variableRateINR: number | null;
+  marginalRateINR: number;
+  slabIndex: number;
+  kwhToNextSlab: number | null;
+  nextSlabRateINR: number | null;
+}
+
+export interface BudgetStatus {
+  budgetINR: number;
+  budgetKWh: number;
+  spentINR: number;
+  projectedINR: number;
+  projectedOverINR: number;
+  usedPercent: number;
+  remainingKWh: number;
+  dailyAllowanceKWh: number | null;
+  status: 'on_track' | 'at_risk' | 'over';
+}
+
+export interface BillProjection {
+  cycleStart: string;
+  /** Exclusive: the first day of the next cycle */
+  cycleEnd: string;
+  cycleDays: number;
+  elapsedDays: number;
+  daysLeft: number;
+  usedKWh: number;
+  meteredKWh: number;
+  simulatedKWh: number;
+  dailyKWh: number;
+  projectedKWh: number;
+  paceBasis: 'cycle' | 'last24h';
+  confidence: 'low' | 'medium' | 'high';
+  soFar: BillBreakdown;
+  projected: BillBreakdown;
+  tariff: Tariff;
+  budget: BudgetStatus | null;
+  disclaimer: string;
+}

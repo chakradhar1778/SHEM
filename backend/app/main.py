@@ -26,7 +26,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.ai.background import start_ai_tasks
-from app.api import (ai, bills, device, health, household, insights, inventory, relay, simulation, stream, target,
+from app.api import (ai, billing, bills, device, health, household, insights, inventory, relay, simulation, stream, target,
                      telemetry, voice_ws)
 from app.config import get_settings
 from app.database import init_db
@@ -119,7 +119,7 @@ app.include_router(stream.router, prefix="/api")
 app.include_router(voice_ws.router, prefix="/api")
 # Protected (X-API-Key)
 _auth = [Depends(require_api_key)]
-for module in (device, telemetry, relay, household, inventory, bills, target, insights, simulation, ai):
+for module in (device, telemetry, relay, household, inventory, bills, billing, target, insights, simulation, ai):
     app.include_router(module.router, prefix="/api", dependencies=_auth)
 
 

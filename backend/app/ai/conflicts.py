@@ -256,7 +256,10 @@ def detect_conflicts(db: Session, include_dismissed: bool = False, mqtt_connecte
                     suggestion="Adjust daily hours/wattages, or note the meter only covers the circuit it is on."))
 
     # Bills
-    bills = list(db.scalars(select(ElectricityBill)).all())
+    from app.services.billing_service import is_home_bill
+    all_bills = list(db.scalars(select(ElectricityBill)).all())
+    # Tariff/budget checks apply to this home's bills only; other locations have their own tariffs.
+    bills = [b for b in all_bills if is_home_bill(b)]
     seen_periods: Dict[tuple, str] = {}
     for b in bills:
         if b.units_consumed_kwh and b.bill_amount_inr:
@@ -273,7 +276,7 @@ def detect_conflicts(db: Session, include_dismissed: bool = False, mqtt_connecte
                                "fuel adjustment, duty) in Settings to match your bill.",
                     entity_type="bill", entity_id=b.id))
         if b.billing_month and b.billing_year:
-            key = (b.billing_year, b.billing_month)
+            key = (b.location_tag or "my_home", b.billing_year, b.billing_month)
             if key in seen_periods:
                 out.append(Conflict(
                     id=f"bill-duplicate:{b.id}", severity="warning", category="bill", title="Duplicate bill",

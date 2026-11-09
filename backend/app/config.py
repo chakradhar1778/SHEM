@@ -83,6 +83,10 @@ class Settings(BaseSettings):
     # ── Appliance simulation (appliances without a relay) ─────
     simulation_enabled: bool = True
 
+    # ── Alerts (notification bell) + budget saver ─────────────
+    alerts_enabled: bool = True
+    alerts_interval_seconds: int = 60
+
     # ── SHEM AI (energy guide) ─────────────────────────────────
     # Both providers are called through the OpenAI SDK (OpenAI-compatible
     # endpoints). The primary is tried first; the other one is the fallback.

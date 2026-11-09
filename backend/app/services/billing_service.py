@@ -35,6 +35,14 @@ settings = get_settings()
 
 MAX_KWH = 1_000_000.0
 
+# Bills can be tagged for other places (parents' home, office). Only this home's bills
+# are compared with SHEM's metered + simulated usage, the tariff and the budget.
+HOME_LOCATION = "my_home"
+
+
+def is_home_bill(bill) -> bool:
+    return (bill.location_tag or HOME_LOCATION) == HOME_LOCATION
+
 
 # ═══════════════════════════════════════════════════════════════
 # TARIFF
@@ -419,6 +427,8 @@ def bill_breakdown(db: Session, bill) -> dict:
     """
     from app.services.insights_service import _usage
 
+    if not is_home_bill(bill):
+        raise ValueError("This bill is for another location; SHEM only measures this home.")
     t = load_tariff(db)
     start_d, end_d, source = bill_period(bill, t.cycle_day)
     start, end = cycle_instants(start_d, end_d)

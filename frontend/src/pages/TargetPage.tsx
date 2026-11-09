@@ -6,6 +6,7 @@ import { useInventory } from '../hooks/useInventory';
 import { useHomeConfig } from '../hooks/useHomeConfig';
 import { useApiQuery } from '../hooks/useApiQuery';
 import { fetchBillProjection } from '../api/billingApi';
+import { BudgetSaverCard } from '../components/target/BudgetSaverCard';
 import { TARGET_CONSTRAINTS } from '../context/targetContextDef';
 import { evaluateTarget } from '../utils/targetEvaluation';
 import { PageHero } from '../components/art/PageHero';
@@ -28,7 +29,7 @@ function cyclePeriodLabel(start: string, endExclusive: string): string {
 export function TargetPage() {
   const navigate = useNavigate();
   const { target, saveTarget, validateAmount } = useTarget();
-  const { bills, latestBill } = useBill();
+  const { homeBills: bills, latestBill } = useBill();
   const { inventory } = useInventory();
   const { config } = useHomeConfig();
   const { data: cycle } = useApiQuery(fetchBillProjection, 'target-cycle', 120_000);
@@ -235,6 +236,8 @@ export function TargetPage() {
           <div className="empty"><span><strong>No history yet.</strong>Add a bill to see how your spending compares with your target.</span></div>
         )}
       </section>
+
+      <BudgetSaverCard />
 
       <button type="button" className="note-card" onClick={() => navigate(ev.dataSource === 'NONE' ? '/devices' : '/bill')}>
         <span className="note-card__icon"><BoltIcon size={26} /></span>

@@ -26,7 +26,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.ai.background import start_ai_tasks
-from app.api import (ai, billing, bills, device, health, household, insights, inventory, relay, simulation, stream, target,
+from app.api import (ai, alerts, billing, bills, device, health, household, insights, inventory, relay, simulation, stream, target,
                      telemetry, voice_ws)
 from app.config import get_settings
 from app.database import init_db
@@ -79,6 +79,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     tasks = start_background_tasks(app) + start_ai_tasks(app)
     if settings.simulation_enabled:
         tasks.append(asyncio.create_task(simulation_loop(), name="shem-simulation"))
+    if settings.alerts_enabled:
+        from app.services.alerts_service import alerts_loop
+        tasks.append(asyncio.create_task(alerts_loop(app), name="shem-alerts"))
     logger.info("SHEM Backend ready on %s:%s", settings.host, settings.port)
 
     yield
@@ -119,7 +122,7 @@ app.include_router(stream.router, prefix="/api")
 app.include_router(voice_ws.router, prefix="/api")
 # Protected (X-API-Key)
 _auth = [Depends(require_api_key)]
-for module in (device, telemetry, relay, household, inventory, bills, billing, target, insights, simulation, ai):
+for module in (device, telemetry, relay, household, inventory, bills, billing, alerts, target, insights, simulation, ai):
     app.include_router(module.router, prefix="/api", dependencies=_auth)
 
 

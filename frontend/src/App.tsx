@@ -4,6 +4,7 @@ import { OverviewPage } from './pages/OverviewPage';
 import { HomeGate } from './components/system/HomeGate';
 import { DataGate } from './components/system/DataGate';
 import { ConnectionBanner } from './components/system/ConnectionBanner';
+import { NotificationBell } from './components/system/NotificationBell';
 import { HomeSetupPage } from './pages/HomeSetupPage';
 import { DevicesHomePage } from './pages/devices/DevicesHomePage';
 import { AddDevicePage } from './pages/devices/AddDevicePage';
@@ -103,13 +104,7 @@ function AppLayout() {
           </div>
 
           <div className="mobile-topbar__actions">
-            <button type="button" className="mobile-topbar__btn" title="Notifications" aria-label="Notifications">
-              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-              <span className="mobile-topbar__badge-dot" aria-hidden="true" />
-            </button>
+            <NotificationBell />
             <div className="profile-menu" ref={menuRef}>
               <button
                 type="button"

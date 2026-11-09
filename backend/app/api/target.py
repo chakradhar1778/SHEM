@@ -61,6 +61,7 @@ def clear_target(db: Session = Depends(get_db)) -> Response:
     target.monthly_budget_inr = 0.0
     target.target_type = "budget"
     target.is_configured = False
+    target.saver_mode = "off"
     target.updated_at = utcnow()
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)

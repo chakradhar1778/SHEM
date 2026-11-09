@@ -395,6 +395,8 @@ class EnergyTargetSchema(ApiModel):
     target_type: Literal["budget", "reduction"] = "budget"
     is_configured: bool = False
     monthly_target_kwh: Optional[float] = None   # budget ÷ configured tariff
+    saver_mode: Literal["off", "suggest", "auto"] = "off"
+    saver_trigger: Literal["at_risk", "over"] = "at_risk"
     updated_at: Optional[UtcDateTime] = None
 
 
@@ -746,3 +748,53 @@ class BillApplianceBreakdown(ApiModel):
 
 
 BillProjectionResponse.model_rebuild()
+
+
+
+# ── Notifications & budget saver ───────────────────────────────────────────────
+
+class NotificationSchema(ApiModel):
+    id: int
+    kind: str
+    severity: Literal["info", "warning", "critical", "success"]
+    title: str
+    message: str
+    link: Optional[str] = None
+    created_at: UtcDateTime
+    read_at: Optional[UtcDateTime] = None
+
+
+class NotificationList(ApiModel):
+    items: List[NotificationSchema]
+    unread_count: int
+
+
+class AutomationLogEntry(ApiModel):
+    id: int
+    appliance_id: Optional[str] = None
+    appliance_name: Optional[str] = None
+    action: Literal["switched_off", "suggested", "skipped", "failed"]
+    reason: str
+    cycle_start: Optional[str] = None
+    created_at: UtcDateTime
+
+
+class SaverCandidate(ApiModel):
+    appliance_id: str
+    name: str
+    icon_type: Optional[str] = None
+    is_on: bool
+    simulated: bool
+
+
+class BudgetSaverSettings(ApiModel):
+    mode: Literal["off", "suggest", "auto"]
+    trigger: Literal["at_risk", "over"]
+    budget_configured: bool
+    candidates: List[SaverCandidate] = []
+    log: List[AutomationLogEntry] = []
+
+
+class BudgetSaverUpdate(ApiModel):
+    mode: Optional[Literal["off", "suggest", "auto"]] = None
+    trigger: Optional[Literal["at_risk", "over"]] = None

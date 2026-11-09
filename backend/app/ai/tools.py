@@ -318,6 +318,28 @@ def t_bill_breakdown(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
     return _dump(bill_appliance_breakdown(str(args.get("bill_id")), ctx.db))
 
 
+@tool("get_notifications", "Recent alerts from the notification bell (bill due, budget 80%/100%, projected over "
+      "budget, slab changes, bill vs usage, budget-saver actions) and the unread count.", label="Reading alerts")
+def t_notifications(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    from app.api.alerts import list_notifications
+    return _dump(list_notifications(20, ctx.db))
+
+
+@tool("set_budget_saver",
+      "Configure the opt-in budget saver: mode off | suggest (notify) | auto (switch off appliances marked "
+      "Essential = No when the budget is at risk); trigger at_risk (projected bill over budget) | over (bill so far "
+      "over budget). Confirm with the user before enabling auto.",
+      {"type": "object", "properties": {"mode": {"type": "string", "enum": ["off", "suggest", "auto"]},
+                                        "trigger": {"type": "string", "enum": ["at_risk", "over"]}}},
+      write=True, label="Setting budget saver")
+def t_set_saver(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    from app.api.alerts import update_budget_saver
+    from app.models.schemas import BudgetSaverUpdate
+    out = update_budget_saver(BudgetSaverUpdate.model_validate(args), ctx.db)
+    return {"budgetSaver": _dump(out), "summary": f"Budget saver: {out.mode} (trigger {out.trigger}).",
+            "_ui": _action("set_budget_saver", "success", f"Budget saver {out.mode}", out.trigger, "target", "1")}
+
+
 @tool("get_tariff", "Tariff settings used for every cost: flat or slab rates, fixed charge, fuel adjustment, "
       "electricity duty and billing-cycle day.", label="Reading tariff")
 def t_get_tariff(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:

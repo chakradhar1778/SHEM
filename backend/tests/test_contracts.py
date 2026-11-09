@@ -189,6 +189,13 @@ def test_rest_responses_match_frontend_types(client):
         checks["ApplianceBillShare"] = proj["applianceCosts"][0]
     bill_id = client.get("/api/bills", headers=AUTH).json()[0]["id"]
     checks["BillApplianceBreakdown"] = client.get(f"/api/billing/bills/{bill_id}/appliances", headers=AUTH).json()
+    nl = client.post("/api/notifications/check", headers=AUTH).json()
+    checks["NotificationList"] = nl
+    if nl["items"]:
+        checks["NotificationItem"] = nl["items"][0]
+    client.put("/api/automation/budget-saver", headers=AUTH, json={"mode": "suggest"})
+    saver = client.get("/api/automation/budget-saver", headers=AUTH).json()
+    checks["BudgetSaverSettings"] = saver
 
     for interface, payload in checks.items():
         assert_matches(interface, payload)

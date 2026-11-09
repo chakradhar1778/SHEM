@@ -20,6 +20,8 @@ export const DATA_CHANGED_EVENT = 'shem:data-changed';
 export const AI_CONFLICT_EVENT = 'shem:ai-conflict';
 export const AI_DAILY_INSIGHT_EVENT = 'shem:ai-daily-insight';
 export const RELAY_UPDATE_EVENT = 'shem:relay-update';
+/** A new notification arrived on the live stream (detail = NotificationItem). */
+export const NOTIFICATION_EVENT = 'shem:notification';
 
 export function emitWindowEvent(name: string, detail?: unknown): void {
   window.dispatchEvent(new CustomEvent(name, { detail }));

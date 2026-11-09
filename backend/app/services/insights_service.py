@@ -426,7 +426,10 @@ def _latest_bill(db: Session) -> Optional[ElectricityBill]:
     from app.services.billing_service import bill_period, load_tariff
     cycle_day = load_tariff(db).cycle_day
     best, best_start = None, None
+    from app.services.billing_service import is_home_bill
     for bill in db.scalars(select(ElectricityBill)).all():
+        if not is_home_bill(bill):          # other locations aren't this home's usage
+            continue
         try:
             start, _, _ = bill_period(bill, cycle_day)
         except ValueError:

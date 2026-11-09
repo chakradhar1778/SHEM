@@ -8,6 +8,7 @@ import { ProjectedBillCard } from '../components/bill/ProjectedBillCard';
 import { BillCostSplit } from '../components/bill/BillCostSplit';
 import { BillVsUsageCard } from '../components/bill/BillVsUsageCard';
 import { BillDocumentViewer } from '../components/bill/BillDocumentViewer';
+import { isHomeBill } from '../context/billContextDef';
 import { BILL_DOCUMENT_MAX_MB, BILL_DOCUMENT_TYPES } from '../api/billsApi';
 import { formatCurrencyINR } from '../utils/billMath';
 import { fetchTariff } from '../api/billingApi';
@@ -102,6 +103,16 @@ export function BillPage() {
     setRowError(err ? { id, message: err } : null);
   };
   const [openBill, setOpenBill] = useState<string | null>(null);
+  const [historyLoc, setHistoryLoc] = useState<string>('all');
+  const locationsInUse = Array.from(new Set(bills.map((b) => b.locationTag || 'my_home')));
+  const shownBills = historyLoc === 'all' ? bills : bills.filter((b) => (b.locationTag || 'my_home') === historyLoc);
+  const locLabel = (id: string) => LOCATIONS.find((l) => l.id === id)?.label ?? id;
+  const summary = (() => {
+    if (historyLoc === 'all' || shownBills.length === 0) return null;
+    const avg = shownBills.reduce((t, b) => t + b.billAmount, 0) / shownBills.length;
+    const avgKWh = shownBills.reduce((t, b) => t + b.unitsConsumed, 0) / shownBills.length;
+    return { count: shownBills.length, avg, avgKWh, latest: shownBills[0] };
+  })();
   const [errors, setErrors] = useState<{ units?: string; amount?: string; general?: string }>({});
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
@@ -326,13 +337,30 @@ export function BillPage() {
       {bills.length > 0 && (
         <section className="card" aria-label="Bill history">
           <div className="card__head"><h2 className="card__title">Bill history</h2></div>
+          {locationsInUse.length > 1 && (
+            <div className="bill__chips bill-hist__filter" role="tablist" aria-label="Location">
+              {['all', ...locationsInUse].map((id) => (
+                <button key={id} type="button" role="tab" aria-selected={historyLoc === id} className={`chip ${historyLoc === id ? 'chip--on' : ''}`} onClick={() => setHistoryLoc(id)}>
+                  {id === 'all' ? 'All' : locLabel(id)}
+                </button>
+              ))}
+            </div>
+          )}
+          {summary && (
+            <p className="bill__note bill-hist__summary">
+              {summary.count} {summary.count === 1 ? 'bill' : 'bills'} · average {formatCurrencyINR(summary.avg)} ({Math.round(summary.avgKWh)} kWh) · latest {summary.latest.billingPeriod}
+              {historyLoc !== 'my_home' && ' · not compared with this home’s usage'}
+            </p>
+          )}
           <div className="list">
-            {bills.map((b) => (
+            {shownBills.map((b) => (
               <div key={b.id} className="bill-hist-item">
                 <div className="row row--plain bill-hist">
                   <span className="row__body">
                     <span className="row__title">{b.billingPeriod}</span>
-                    <span className="row__sub">{b.utilityProvider} · {b.unitsConsumed} kWh</span>
+                    <span className="row__sub">
+                      {b.utilityProvider} · {b.unitsConsumed} kWh{(b.locationTag || 'my_home') !== 'my_home' ? ` · ${locLabel(b.locationTag!)}` : ''}
+                    </span>
                   </span>
                   <b className="bill-hist__amt">{formatCurrencyINR(b.billAmount)}</b>
                   <button type="button" className="icon-btn" aria-label={`Delete bill for ${b.billingPeriod}`} onClick={() => deleteBill(b.id)}>
@@ -340,14 +368,16 @@ export function BillPage() {
                   </button>
                 </div>
                 <div className="bill-hist__actions">
-                  <button
-                    type="button"
-                    className="btn-link bill-hist__toggle"
-                    aria-expanded={openBill === b.id}
-                    onClick={() => setOpenBill(openBill === b.id ? null : b.id)}
-                  >
-                    {openBill === b.id ? 'Hide breakdown' : 'Where the money went'}
-                  </button>
+                  {isHomeBill(b) && (
+                    <button
+                      type="button"
+                      className="btn-link bill-hist__toggle"
+                      aria-expanded={openBill === b.id}
+                      onClick={() => setOpenBill(openBill === b.id ? null : b.id)}
+                    >
+                      {openBill === b.id ? 'Hide breakdown' : 'Where the money went'}
+                    </button>
+                  )}
                   {b.documentStatus === 'uploading' ? (
                     <span className="bill-hist__doc-status">Uploading document…</span>
                   ) : b.hasDocument ? (
@@ -361,7 +391,7 @@ export function BillPage() {
                   )}
                 </div>
                 {rowError?.id === b.id && <p className="form__error" role="alert">{rowError.message}</p>}
-                {openBill === b.id && <BillCostSplit billId={b.id} />}
+                {openBill === b.id && isHomeBill(b) && <BillCostSplit billId={b.id} />}
               </div>
             ))}
           </div>

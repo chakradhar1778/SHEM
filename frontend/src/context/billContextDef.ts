@@ -84,7 +84,10 @@ export interface BillContextType extends SyncState {
   /** Array of all saved bill records, sorted chronologically (newest first) */
   bills: BillRecord[];
 
-  /** The most recent bill record, or null if bill history is empty */
+  /** This home's bills (location "my_home"): the ones compared with SHEM's usage, tariff and budget */
+  homeBills: BillRecord[];
+
+  /** The most recent bill for THIS home (other locations never count), or null */
   latestBill: BillRecord | null;
 
   /** Adds a new bill record with validation and persistence; `file` (image/PDF) is stored after the bill is saved */
@@ -108,5 +111,9 @@ export interface BillContextType extends SyncState {
   /** Sets the active location filter */
   setSelectedLocation: (location: string) => void;
 }
+
+export const HOME_LOCATION = 'my_home';
+
+export const isHomeBill = (b: Pick<BillRecord, 'locationTag'>) => (b.locationTag || HOME_LOCATION) === HOME_LOCATION;
 
 export const BillContext = createContext<BillContextType | null>(null);

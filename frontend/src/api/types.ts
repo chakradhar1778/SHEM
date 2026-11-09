@@ -198,6 +198,8 @@ export interface TargetDTO {
   targetType: 'budget' | 'reduction';
   isConfigured: boolean;
   monthlyTargetKWh: number | null;
+  saverMode: 'off' | 'suggest' | 'auto';
+  saverTrigger: 'at_risk' | 'over';
   updatedAt: string | null;
 }
 
@@ -415,6 +417,7 @@ export type StreamEvent =
   | { type: 'init_snapshot'; data: InitSnapshot; sentAt: string }
   | { type: 'telemetry'; data: TelemetryReading; sentAt: string }
   | { type: 'sim_update'; data: SimStatus; sentAt: string }
+  | { type: 'notification'; data: NotificationItem; sentAt: string }
   | { type: 'device_status'; data: DeviceStatus; sentAt: string }
   | { type: 'relay_state'; data: RelayStatus; sentAt: string }
   | { type: 'relay_update'; data: RelayCommandDetail; sentAt: string }
@@ -543,4 +546,49 @@ export interface BillApplianceBreakdown {
   /** SHEM metered + simulated kWh per recorded day (needs ≥ 6 recorded hours) */
   recordedDailyKWh: number | null;
   variancePercent: number | null;
+}
+
+// ── Notifications & budget saver ──────────────────────────────────────────────
+
+export interface NotificationItem {
+  id: number;
+  kind: string;
+  severity: 'info' | 'warning' | 'critical' | 'success';
+  title: string;
+  message: string;
+  /** In-app route to open, e.g. /bill */
+  link: string | null;
+  createdAt: string;
+  readAt: string | null;
+}
+
+export interface NotificationList {
+  items: NotificationItem[];
+  unreadCount: number;
+}
+
+export interface AutomationLogEntry {
+  id: number;
+  applianceId: string | null;
+  applianceName: string | null;
+  action: 'switched_off' | 'suggested' | 'skipped' | 'failed';
+  reason: string;
+  cycleStart: string | null;
+  createdAt: string;
+}
+
+export interface SaverCandidate {
+  applianceId: string;
+  name: string;
+  iconType: string | null;
+  isOn: boolean;
+  simulated: boolean;
+}
+
+export interface BudgetSaverSettings {
+  mode: 'off' | 'suggest' | 'auto';
+  trigger: 'at_risk' | 'over';
+  budgetConfigured: boolean;
+  candidates: SaverCandidate[];
+  log: AutomationLogEntry[];
 }

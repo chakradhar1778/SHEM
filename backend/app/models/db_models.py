@@ -331,8 +331,52 @@ class EnergyTarget(Base):
     monthly_budget_inr: Mapped[float] = mapped_column(Float, default=0.0)
     target_type: Mapped[str] = mapped_column(String(32), default="budget")  # budget | reduction
     is_configured: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Budget saver (opt-in): "off" | "suggest" (notify) | "auto" (switch off non-essential appliances)
+    saver_mode: Mapped[str] = mapped_column(String(8), default="off")
+    # When it acts: "at_risk" (projected bill above budget) | "over" (bill so far above budget)
+    saver_trigger: Mapped[str] = mapped_column(String(8), default="at_risk")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
+
+
+# ═══════════════════════════════════════════════════════════════
+# NOTIFICATIONS & AUTOMATION
+# ═══════════════════════════════════════════════════════════════
+
+class Notification(Base):
+    """An alert shown in the app's notification bell. `dedupe_key` makes each alert fire once."""
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    dedupe_key: Mapped[str] = mapped_column(String(160), unique=True)
+    kind: Mapped[str] = mapped_column(String(32))          # bill_due | budget | slab | bill_mismatch | saver
+    severity: Mapped[str] = mapped_column(String(16))      # info | warning | critical | success
+    title: Mapped[str] = mapped_column(String(200))
+    message: Mapped[str] = mapped_column(Text)
+    link: Mapped[Optional[str]] = mapped_column(String(200))   # in-app route, e.g. /bill
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+    read_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+
+    __table_args__ = (
+        Index("ix_notifications_created", "created_at"),
+    )
+
+
+class AutomationLog(Base):
+    """Every action (or suggestion) the budget saver made, and why."""
+    __tablename__ = "automation_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    appliance_id: Mapped[Optional[str]] = mapped_column(String(64))
+    appliance_name: Mapped[Optional[str]] = mapped_column(String(128))
+    action: Mapped[str] = mapped_column(String(32))         # switched_off | suggested | skipped | failed
+    reason: Mapped[str] = mapped_column(Text)
+    cycle_start: Mapped[Optional[str]] = mapped_column(String(10))
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
+
+    __table_args__ = (
+        Index("ix_automation_log_created", "created_at"),
+    )
 
 
 # ═══════════════════════════════════════════════════════════════

@@ -129,7 +129,7 @@ def bill_appliance_breakdown(bill_id: str, db: Session = Depends(get_db)) -> Bil
     try:
         r = bs.bill_breakdown(db, bill)
     except ValueError as exc:
-        raise HTTPException(422, str(exc)) from exc
+        raise HTTPException(422, str(exc)) from exc  # no period, or a bill for another location
     label = bill.billing_period or f"{r['period_start']:%b %Y}"
     return BillApplianceBreakdown(
         bill_id=bill.id, billing_label=label, period_start=r["period_start"].isoformat(),

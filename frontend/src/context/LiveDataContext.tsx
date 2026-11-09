@@ -7,6 +7,7 @@ import {
   DATA_CHANGED_EVENT,
   emitWindowEvent,
   errorMessage,
+  NOTIFICATION_EVENT,
   RELAY_UPDATE_EVENT,
   websocketUrl,
 } from '../api/backendApi';
@@ -144,6 +145,11 @@ export function LiveDataProvider({ children }: { children: ReactNode }) {
         // SHEM AI changed data / found conflicts / wrote a daily briefing
         case 'ai_action':
           emitWindowEvent(DATA_CHANGED_EVENT, event.data);
+          break;
+        case 'notification':
+          emitWindowEvent(NOTIFICATION_EVENT, event.data);
+          // The budget saver may have switched appliances: let open screens refresh.
+          if (event.data.kind === 'saver') emitWindowEvent(DATA_CHANGED_EVENT, { tool: 'budget_saver', summary: event.data.title });
           break;
         case 'ai_conflict':
           emitWindowEvent(AI_CONFLICT_EVENT, event.data);

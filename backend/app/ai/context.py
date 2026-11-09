@@ -81,7 +81,8 @@ def build_snapshot(db: Session, mqtt_connected: bool) -> Dict[str, Any]:
 
     def bills():
         n = db.scalar(select(func.count()).select_from(ElectricityBill)) or 0
-        latest = db.scalars(select(ElectricityBill).order_by(
+        latest = db.scalars(select(ElectricityBill).where(
+            (ElectricityBill.location_tag.is_(None)) | (ElectricityBill.location_tag == "my_home")).order_by(
             ElectricityBill.billing_year.is_(None), desc(ElectricityBill.billing_year),
             desc(ElectricityBill.billing_month), desc(ElectricityBill.created_at)).limit(1)).first()
         return {"count": n, "latest": None if latest is None else {

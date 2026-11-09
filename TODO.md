@@ -42,21 +42,27 @@ Gaps found in the billing review (2026-11-10). Ordered by priority.
   Today only the file name is saved. Upload the image/PDF to the backend (size + type limits), keep it with the
   bill, and add a "View bill" action in Bill history. Reading the contents (OCR) is out of scope.
 
-## Next
-
-- [ ] **7. Alerts + working notification bell**
+- [x] **7. Alerts + working notification bell** — done 2026-11-10
+  (bell in the top bar; bill due ≤3 days / overdue, budget 80%/100%, projected over budget, slab near/entered,
+  bill vs usage ≥30%; checked every minute, pushed live; `/api/notifications`)
   The top-bar bell is decorative. Add a notifications feed (WebSocket + list) for: bill due soon / overdue,
   budget 80% / 100% used, about to cross into a higher slab, projected bill above budget, bill entered that
   disagrees with measured usage.
 
-- [ ] **8. Budget-driven automation (opt-in)**
+- [x] **8. Budget-driven automation (opt-in)** — done 2026-11-10
+  (Target → Budget saver: Off / Suggest / Automatic, trigger at-risk or over; only Essential = No appliances;
+  each switched off at most once per 24 h; actions logged; `/api/automation/budget-saver`)
   When the projected bill is above budget, offer (or, if enabled, perform) switching off non-essential
   appliances (`isEssential = no`) on the relay or the simulator, with a log of what was switched and why.
 
-- [ ] **9. Bills per location**
+- [x] **9. Bills per location** — done 2026-11-10
+  (Insights, Target, Home, conflicts and bill analysis use this home's bills only; Bill history filters by
+  location with per-location averages)
   Bills can be tagged "Parents' home" / "Office", but all analytics treat every bill as this home's.
   Filter comparisons, target evaluation and trends to `locationTag = my_home`, and show other locations
   separately.
+
+## Next
 
 - [ ] **10. Bi-monthly billing cycles**
   Some utilities bill every two months with doubled slab limits. Support a cycle length of 1 or 2 months.

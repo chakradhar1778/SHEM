@@ -38,6 +38,7 @@ os.environ.update({
     "AI_BACKGROUND_ENABLED": "false",
     # Simulated appliances: the 2 s background loop is off; tests drive simulator.tick() directly.
     "SIMULATION_ENABLED": "false",
+    "ALERTS_ENABLED": "false",
 })
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

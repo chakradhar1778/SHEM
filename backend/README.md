@@ -43,6 +43,21 @@ Day breakdowns: `GET /api/insights/today?date=YYYY-MM-DD` (any past local date) 
 * Budget conflicts and recommendations use this projection, so simulated appliances count. A bill whose amount is far from what the tariff predicts for its units is flagged, as is a budget below the fixed charge.
 * The AI tools `get_bill_projection` and `get_tariff` expose it, and the AI snapshot includes the projected bill.
 
+## Alerts and budget saver
+
+`app/services/alerts_service.py` runs every `ALERTS_INTERVAL_SECONDS` (60; `ALERTS_ENABLED=false` turns it off). It writes `notifications` (each alert fires once, by dedupe key) and pushes them as `notification` WebSocket events to the bell in the top bar:
+
+* bill due in ≤ 3 days or overdue (≤ 7 days), for any location;
+* 80% and 100% of the budget used this billing cycle, and the projected bill above budget (≥ 3 days in, not low confidence);
+* about to enter, or entered, a higher slab;
+* a recent bill that disagrees with recorded usage by ≥ 30% per day.
+
+The **budget saver** (Target page; `GET/PUT /api/automation/budget-saver`) is off by default. *Suggest* sends one notification per cycle listing appliances marked **Essential: No** that are on. *Automatic* switches them off, through the simulator or the relay when MQTT is up, at most once per appliance per 24 h, so turning one back on is respected. Every action goes to `automation_log`. The trigger is the projected bill or the bill so far going over budget. "Not sure" and essential appliances are never touched.
+
+Endpoints: `GET /api/notifications`, `POST /api/notifications/{id}/read`, `POST /api/notifications/read-all`, `POST /api/notifications/check`.
+
+**Locations:** bills tagged for another place (e.g. `parents_home`, `office`) are stored and get due-date alerts, but are excluded from comparisons with this home's usage, tariff checks, budget and target (`billing_service.is_home_bill`).
+
 ## Bill documents
 
 A photo or PDF of a bill can be stored with it and viewed later. SHEM never reads its contents (no OCR).
@@ -55,7 +70,7 @@ A photo or PDF of a bill can be stored with it and viewed later. SHEM never read
 
 Set `GEMINI_API_KEY` and/or `GROQ_API_KEY` ([Groq](https://console.groq.com/keys)) in `.env`. Both are called through the OpenAI SDK; `AI_PRIMARY_PROVIDER` is tried first and the other provider takes over on any error (mid-stream too: the client gets `fallback` + `reset` events).
 
-* **Tools (36)**: read everything (snapshot, telemetry, insights, inventory, bills, target, events, and read-only SQL over the whole DB via `query_database`, which uses a `mode=ro` connection plus an authorizer that permits SELECT only). Write tools reuse the REST validation: relay and appliance on/off, appliances, rooms, bills, target, and household settings. Every write goes to `ai_action_log` and is broadcast as an `ai_action` WebSocket event.
+* **Tools (39)**: read everything (snapshot, telemetry, insights, inventory, bills, target, events, and read-only SQL over the whole DB via `query_database`, which uses a `mode=ro` connection plus an authorizer that permits SELECT only). Write tools reuse the REST validation: relay and appliance on/off, appliances, rooms, bills, target, and household settings. Every write goes to `ai_action_log` and is broadcast as an `ai_action` WebSocket event.
 * **UI components**: the model embeds ```` ```shem-ui {json} ``` ```` blocks. The backend validates them (`app/ai/components.py`) and streams them as `component` events. Follow-ups come in a ```` ```shem-followups ``` ```` block, with rule-based ones as a fallback.
 * **Conflicts** (`app/ai/conflicts.py`, rule-based): declared wattage vs measured power on the relay (e.g. 9 W declared, 480 W measured), load while the relay is OFF, implausible ratings, estimates vs meter, bill ₹/kWh vs tariff, duplicate bills, budget exceeded or at risk, device offline, voltage, invalid readings, and failed relay commands. A scan runs every 60 s and pushes `ai_conflict` events for new conflicts.
 * **Daily insights**: after `AI_DAILY_INSIGHT_HOUR`, yesterday's briefing is generated: metric cards and an hourly chart built from facts, plus an LLM narrative. If no provider is available, a rule-based narrative is used. The result is pushed as an `ai_daily_insight` event.
@@ -74,7 +89,7 @@ Endpoints are under `/api/ai/*` (see `app/api/ai.py`). Streaming uses `POST /api
 
 ```bash
 pip install -r requirements-dev.txt
-python -m pytest                                   # 181 tests, ~12 s
+python -m pytest                                   # 189 tests, ~12 s
 python -m pytest --cov=app --cov-report=term-missing
 ```
 
@@ -98,6 +113,7 @@ Every test runs against a temporary SQLite file with a fake or mocked MQTT clien
 | `test_simulation` | simulated appliances: power profiles, routine and override expiry, programme auto-off, energy integration, metered + simulated insights, any-date breakdown, day totals |
 | `test_billing` | slab/fixed/fuel/duty maths and inverse, billing-cycle dates, tariff API validation, projection from metered + simulated energy, budget kWh, budget conflicts counting simulated appliances, bill check against the tariff model |
 | `test_bill_documents` | upload/view/replace/delete, type sniffing (mislabelled files refused), size limit, API key required, file removed with its bill |
+| `test_alerts` | bill due/overdue, budget 80/100% and projection, slab near/entered, bill vs usage, read state, budget saver off/suggest/auto (essential and unsure untouched, 24 h respect), other-location bills excluded |
 | `test_schema_migration` | automatic column upgrade, SPA vs API routing |
 
 ## API conventions

@@ -1,0 +1,48 @@
+.notif { position: relative; }
+.notif .mobile-topbar__btn { position: relative; }
+.notif__badge {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--red, #E5484D);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  box-shadow: 0 0 0 2px #fff;
+}
+.notif__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -48px;
+  z-index: 60;
+  width: min(340px, calc(100vw - 32px));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgba(27, 42, 92, 0.18);
+  overflow: hidden;
+}
+.notif__head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.notif__head b { font-size: 14px; color: var(--ink); }
+.notif__head .btn-link { font-size: 12px; }
+.notif__empty { margin: 0; padding: 18px 14px; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+.notif__list { list-style: none; margin: 0; padding: 4px; overflow-y: auto; }
+.notif__item { width: 100%; display: flex; gap: 10px; padding: 10px; border: none; border-radius: 12px; background: none; font: inherit; text-align: left; cursor: pointer; }
+.notif__item:hover { background: #F6F8FD; }
+.notif__item.is-unread { background: #F2F6FF; }
+.notif__icon { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff; background: var(--blue); }
+.notif__icon.is-warning { background: var(--amber, #E9A33A); }
+.notif__icon.is-critical { background: var(--red, #E5484D); }
+.notif__icon.is-success { background: var(--green, #1FA971); }
+.notif__body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.notif__body b { font-size: 13px; color: var(--ink); }
+.notif__body span { font-size: 12px; line-height: 1.4; color: var(--ink-2); }
+.notif__body i { font-style: normal; font-size: 11px; color: var(--muted); }

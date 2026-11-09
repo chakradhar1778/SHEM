@@ -12,6 +12,7 @@ import {
 import type { BillDTO } from '../api/types';
 import {
   BillContext,
+  isHomeBill,
   type BillRecord,
   type BillInput,
 } from './billContextDef';
@@ -116,7 +117,9 @@ export function BillProvider({ children }: { children: React.ReactNode }) {
     [refresh]
   );
 
-  const latestBill = useMemo<BillRecord | null>(() => (bills.length > 0 ? bills[0] : null), [bills]);
+  // Bills for other locations (parents' home, office) are kept but never compared with this home.
+  const homeBills = useMemo(() => bills.filter(isHomeBill), [bills]);
+  const latestBill = useMemo<BillRecord | null>(() => (homeBills.length > 0 ? homeBills[0] : null), [homeBills]);
 
   // Bill creations in flight: a document upload for that bill waits for it.
   const pendingCreates = useRef<Map<string, Promise<unknown>>>(new Map());
@@ -249,6 +252,7 @@ export function BillProvider({ children }: { children: React.ReactNode }) {
     <BillContext.Provider
       value={{
         bills,
+        homeBills,
         latestBill,
         addBill,
         attachDocument,

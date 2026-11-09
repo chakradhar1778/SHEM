@@ -10,6 +10,7 @@ import { PageHero } from '../components/art/PageHero';
 import { ApplianceUsageList } from '../components/appliances/ApplianceUsageList';
 import { SourceTag } from '../components/appliances/SourceTag';
 import { ProjectedBillCard } from '../components/bill/ProjectedBillCard';
+import { BillStatusPill } from '../components/bill/BillPayment';
 import { Sparkline } from '../components/ui/Sparkline';
 import { ArrowIcon, BoltIcon, CalendarIcon, ChevronRight, ClockIcon, UploadIcon, WalletIcon } from '../components/ui/icons';
 import { formatRaw } from '../utils/liveFormat';
@@ -170,7 +171,7 @@ export function OverviewPage() {
             <span className="bill-row__amount">{formatCurrencyINR(latestBill.billAmount)}</span>
             <span className="row__body">
               <span className="row__title">{latestBill.billingPeriod ?? 'Latest bill'}</span>
-              <span className="row__sub">{latestBill.unitsConsumed} kWh · {latestBill.utilityProvider}</span>
+              <span className="row__sub">{latestBill.unitsConsumed} kWh · {latestBill.utilityProvider} <BillStatusPill bill={latestBill} /></span>
             </span>
             <span className="row__end"><ChevronRight /></span>
           </Link>

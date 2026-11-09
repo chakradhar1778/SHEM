@@ -185,3 +185,31 @@ def test_other_location_bills_are_kept_out_of_home_analytics(client, frozen):
         ids = {c.id for c in detect_conflicts(db, mqtt_connected=True)}
     assert not any(i.startswith("bill-duplicate") for i in ids)  # same month, different places
     assert f"bill-rate:{office['id']}" not in ids                 # office tariff isn't this home's
+
+
+
+# ── mark as paid ───────────────────────────────────────────────────────────────
+
+def test_mark_paid_stops_alerts_and_clears_them(client, frozen, monkeypatch):
+    import app.api.bills as bills_api
+    monkeypatch.setattr(bills_api, "utcnow", lambda: FAKE_NOW)
+    due = client.post("/api/bills", headers=AUTH, json={"billingMonth": 2, "billingYear": 2026, "unitsConsumedKWh": 100,
+                                                        "billAmountINR": 800, "dueDate": "2026-03-07"}).json()
+    assert due["paidOn"] is None
+    assert check(client)["unreadCount"] == 1                      # overdue alert
+
+    paid = client.post(f"/api/bills/{due['id']}/paid", headers=AUTH, json={"paidOn": "2026-03-06"}).json()
+    assert paid["paidOn"] == "2026-03-06" and paid["paidAt"]
+    assert client.get("/api/notifications", headers=AUTH).json()["unreadCount"] == 0   # its alert marked read
+
+    soon = client.post("/api/bills", headers=AUTH, json={"billingMonth": 3, "billingYear": 2026, "unitsConsumedKWh": 90,
+                                                         "billAmountINR": 700, "dueDate": "2026-03-11"}).json()
+    client.post(f"/api/bills/{soon['id']}/paid", headers=AUTH)    # default: today
+    assert client.get("/api/bills", headers=AUTH).json()[0]["paidOn"] == "2026-03-10"
+    assert check(client)["unreadCount"] == 0                      # paid before it was due: no alert
+
+    assert client.post(f"/api/bills/{soon['id']}/paid", headers=AUTH, json={"paidOn": "2026-03-20"}).status_code == 422
+    assert client.post(f"/api/bills/{soon['id']}/paid", headers=AUTH, json={"paidOn": "2026-02-30"}).status_code == 422
+    assert client.post("/api/bills/nope/paid", headers=AUTH).status_code == 404
+    unpaid = client.delete(f"/api/bills/{soon['id']}/paid", headers=AUTH).json()
+    assert unpaid["paidOn"] is None and unpaid["paidAt"] is None

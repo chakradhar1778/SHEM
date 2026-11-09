@@ -313,6 +313,9 @@ class ElectricityBill(Base):
     document_content_type: Mapped[Optional[str]] = mapped_column(String(64))
     document_size: Mapped[Optional[int]] = mapped_column(Integer)
     document_uploaded_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+    # Payment: local date the bill was paid (NULL = unpaid). Paid bills get no due/overdue alerts.
+    paid_on: Mapped[Optional[str]] = mapped_column(String(10))           # YYYY-MM-DD
+    paid_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)     # when it was marked paid
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
 
     __table_args__ = (

@@ -17,7 +17,7 @@ from app.api._crud import apply_partial_update
 from app.config import get_settings
 from app.database import get_db
 from app.models.db_models import ElectricityBill
-from app.models.schemas import ElectricityBillCreate, ElectricityBillSchema, ElectricityBillUpdate
+from app.models.schemas import BillPaidRequest, ElectricityBillCreate, ElectricityBillSchema, ElectricityBillUpdate
 from app.services import document_store
 from app.utils.rate_limit import limiter
 from app.utils.timestamps import utcnow
@@ -73,6 +73,52 @@ def delete_bill(bill_id: str, db: Session = Depends(get_db)) -> Response:
     db.commit()
     document_store.delete(path)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+# ── Payment ───────────────────────────────────────────────────────────────────
+
+def mark_paid(db: Session, bill: ElectricityBill, paid_on: str | None) -> ElectricityBill:
+    from datetime import date
+
+    from sqlalchemy import update
+
+    from app.models.db_models import Notification
+    from app.utils.timestamps import to_local
+    today = to_local(utcnow()).date()
+    day = date.fromisoformat(paid_on) if paid_on else today
+    if day > today:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "The payment date can't be in the future.")
+    bill.paid_on, bill.paid_at = day.isoformat(), utcnow()
+    # Its due / overdue alerts are no longer relevant.
+    db.execute(update(Notification).where(
+        Notification.dedupe_key.in_([f"bill-due:{bill.id}", f"bill-overdue:{bill.id}"]),
+        Notification.read_at.is_(None)).values(read_at=utcnow()))
+    db.commit()
+    db.refresh(bill)
+    return bill
+
+
+@router.post("/bills/{bill_id}/paid", response_model=ElectricityBillSchema, tags=["Bills"])
+def mark_bill_paid(bill_id: str, body: BillPaidRequest | None = None, db: Session = Depends(get_db)) -> ElectricityBillSchema:
+    """Mark a bill as paid (optionally on a past date). Paid bills get no due/overdue alerts."""
+    bill = db.get(ElectricityBill, bill_id)
+    if bill is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bill not found.")
+    try:
+        return ElectricityBillSchema.model_validate(mark_paid(db, bill, body.paid_on if body else None))
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, "Invalid payment date.") from exc
+
+
+@router.delete("/bills/{bill_id}/paid", response_model=ElectricityBillSchema, tags=["Bills"])
+def mark_bill_unpaid(bill_id: str, db: Session = Depends(get_db)) -> ElectricityBillSchema:
+    bill = db.get(ElectricityBill, bill_id)
+    if bill is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bill not found.")
+    bill.paid_on = bill.paid_at = None
+    db.commit()
+    db.refresh(bill)
+    return ElectricityBillSchema.model_validate(bill)
 
 
 # ── Bill document (image / PDF kept for viewing; not parsed) ──────────────────

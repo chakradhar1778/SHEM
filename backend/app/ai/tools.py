@@ -619,6 +619,24 @@ def t_update_bill(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
             "_ui": _action("update_bill", "success", "Bill updated", ", ".join(args), "bill", bid)}
 
 
+@tool("mark_bill_paid", "Mark a bill as paid (paid_on YYYY-MM-DD, default today) or unpaid (paid=false). "
+      "Paid bills stop getting due/overdue alerts.",
+      {"type": "object", "properties": {"bill_id": {"type": "string"}, "paid": {"type": "boolean"},
+                                        "paid_on": {"type": "string"}}, "required": ["bill_id"]},
+      write=True, label="Updating payment")
+def t_mark_paid(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    from app.api.bills import mark_bill_paid, mark_bill_unpaid
+    from app.models.schemas import BillPaidRequest
+    bid = str(args.get("bill_id"))
+    if args.get("paid") is False:
+        out = mark_bill_unpaid(bid, ctx.db)
+        return {"bill": _dump(out), "summary": f"Marked bill {bid} as unpaid.",
+                "_ui": _action("mark_bill_paid", "success", "Bill marked unpaid", None, "bill", bid)}
+    out = mark_bill_paid(bid, BillPaidRequest(paid_on=args.get("paid_on")), ctx.db)
+    return {"bill": _dump(out), "summary": f"Marked bill {bid} as paid on {out.paid_on}.",
+            "_ui": _action("mark_bill_paid", "success", "Bill marked paid", f"Paid on {out.paid_on}", "bill", bid)}
+
+
 @tool("delete_bill", "Delete a bill. Confirm first.",
       {"type": "object", "properties": {"bill_id": {"type": "string"}}, "required": ["bill_id"]},
       write=True, label="Deleting bill")

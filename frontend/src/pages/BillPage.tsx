@@ -9,6 +9,7 @@ import { BillCostSplit } from '../components/bill/BillCostSplit';
 import { BillVsUsageCard } from '../components/bill/BillVsUsageCard';
 import { BillDocumentViewer } from '../components/bill/BillDocumentViewer';
 import { isHomeBill } from '../context/billContextDef';
+import { BillPaymentControl, BillStatusPill } from '../components/bill/BillPayment';
 import { BILL_DOCUMENT_MAX_MB, BILL_DOCUMENT_TYPES } from '../api/billsApi';
 import { formatCurrencyINR } from '../utils/billMath';
 import { fetchTariff } from '../api/billingApi';
@@ -233,7 +234,8 @@ export function BillPage() {
               <span className="latest-bill__period">{latestBill.billingPeriod}</span>
             </div>
             <div className="latest-bill__side">
-              {latestBill.dueDate && <span className="latest-bill__pill"><CalendarIcon size={16} /> Due {formatDue(latestBill.dueDate)}</span>}
+              <BillStatusPill bill={latestBill} />
+              {latestBill.dueDate && !latestBill.paidOn && <span className="latest-bill__pill"><CalendarIcon size={16} /> Due {formatDue(latestBill.dueDate)}</span>}
               <span className="latest-bill__pill latest-bill__pill--kwh">{latestBill.unitsConsumed} kWh</span>
             </div>
           </div>
@@ -390,6 +392,7 @@ export function BillPage() {
                     </button>
                   )}
                 </div>
+                <BillPaymentControl bill={b} />
                 {rowError?.id === b.id && <p className="form__error" role="alert">{rowError.message}</p>}
                 {openBill === b.id && isHomeBill(b) && <BillCostSplit billId={b.id} />}
               </div>

@@ -1,7 +1,7 @@
 import { apiBlob, apiRequest, apiUpload } from './backendApi';
 import type { BillDTO } from './types';
 
-export type BillWrite = Partial<Omit<BillDTO, 'createdAt' | 'hasDocument' | 'documentContentType' | 'documentSize' | 'documentUploadedAt'>>;
+export type BillWrite = Partial<Omit<BillDTO, 'createdAt' | 'hasDocument' | 'documentContentType' | 'documentSize' | 'documentUploadedAt' | 'paidOn' | 'paidAt'>>;
 
 export const fetchBills = () => apiRequest<BillDTO[]>('/api/bills');
 
@@ -25,3 +25,10 @@ export const fetchBillDocument = (id: string) => apiBlob(`/api/bills/${encodeURI
 
 export const deleteBillDocument = (id: string) =>
   apiRequest<BillDTO>(`/api/bills/${encodeURIComponent(id)}/document`, { method: 'DELETE' });
+
+/** Mark a bill paid (paidOn YYYY-MM-DD, default today). Paid bills get no due/overdue alerts. */
+export const markBillPaid = (id: string, paidOn?: string) =>
+  apiRequest<BillDTO>(`/api/bills/${encodeURIComponent(id)}/paid`, { method: 'POST', body: paidOn ? { paidOn } : {} });
+
+export const markBillUnpaid = (id: string) =>
+  apiRequest<BillDTO>(`/api/bills/${encodeURIComponent(id)}/paid`, { method: 'DELETE' });

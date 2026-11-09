@@ -62,6 +62,10 @@ Gaps found in the billing review (2026-11-10). Ordered by priority.
   Filter comparisons, target evaluation and trends to `locationTag = my_home`, and show other locations
   separately.
 
+- [x] **Mark a bill as paid** — done 2026-11-10
+  (Bill history and the latest bill: Paid / Due / Overdue status, "Mark as paid" with a payment date, undo;
+  paid bills stop due/overdue alerts; AI tool `mark_bill_paid`)
+
 ## Next
 
 - [ ] **10. Bi-monthly billing cycles**

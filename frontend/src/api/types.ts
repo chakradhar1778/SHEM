@@ -190,6 +190,9 @@ export interface BillDTO {
   documentContentType: string | null;
   documentSize: number | null;
   documentUploadedAt: string | null;
+  /** Local YYYY-MM-DD the bill was paid; null = unpaid */
+  paidOn: string | null;
+  paidAt: string | null;
   createdAt: string | null;
 }
 

@@ -54,6 +54,8 @@ Day breakdowns: `GET /api/insights/today?date=YYYY-MM-DD` (any past local date) 
 
 The **budget saver** (Target page; `GET/PUT /api/automation/budget-saver`) is off by default. *Suggest* sends one notification per cycle listing appliances marked **Essential: No** that are on. *Automatic* switches them off, through the simulator or the relay when MQTT is up, at most once per appliance per 24 h, so turning one back on is respected. Every action goes to `automation_log`. The trigger is the projected bill or the bill so far going over budget. "Not sure" and essential appliances are never touched.
 
+**Paying a bill:** `POST /api/bills/{id}/paid {"paidOn": "YYYY-MM-DD"}` (the date is optional and defaults to today; future dates are refused) marks it paid, and `DELETE /api/bills/{id}/paid` undoes that. Paid bills get no due or overdue alerts, and their open due alerts are marked read.
+
 Endpoints: `GET /api/notifications`, `POST /api/notifications/{id}/read`, `POST /api/notifications/read-all`, `POST /api/notifications/check`.
 
 **Locations:** bills tagged for another place (e.g. `parents_home`, `office`) are stored and get due-date alerts, but are excluded from comparisons with this home's usage, tariff checks, budget and target (`billing_service.is_home_bill`).

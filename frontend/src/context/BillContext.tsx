@@ -5,6 +5,8 @@ import {
   deleteBill as apiDeleteBill,
   deleteBillDocument,
   fetchBills,
+  markBillPaid,
+  markBillUnpaid,
   updateBill as apiUpdateBill,
   uploadBillDocument,
   type BillWrite,
@@ -59,6 +61,7 @@ function fromDTO(dto: BillDTO): BillRecord {
     hasDocument: dto.hasDocument ?? false,
     documentContentType: dto.documentContentType ?? undefined,
     documentSize: dto.documentSize ?? undefined,
+    paidOn: dto.paidOn ?? undefined,
     createdAt: dto.createdAt ? Date.parse(dto.createdAt) : Date.now(),
   };
 }
@@ -146,6 +149,22 @@ export function BillProvider({ children }: { children: React.ReactNode }) {
       setBills((prev) => sortBills(prev.map((b) => (b.id === dto.id ? fromDTO(dto) : b))));
       return null;
     } catch (e) {
+      return errorMessage(e);
+    }
+  };
+
+  const setPaid = async (id: string, paid: boolean, paidOn?: string): Promise<string | null> => {
+    const before = billsRef.current.find((b) => b.id === id)?.paidOn;
+    const today = new Date();
+    const todayIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    patchBill(id, { paidOn: paid ? paidOn || todayIso : undefined });         // optimistic
+    try {
+      await pendingCreates.current.get(id);
+      const dto = paid ? await markBillPaid(id, paidOn) : await markBillUnpaid(id);
+      setBills((prev) => sortBills(prev.map((b) => (b.id === dto.id ? fromDTO(dto) : b))));
+      return null;
+    } catch (e) {
+      patchBill(id, { paidOn: before });
       return errorMessage(e);
     }
   };
@@ -257,6 +276,7 @@ export function BillProvider({ children }: { children: React.ReactNode }) {
         addBill,
         attachDocument,
         removeDocument,
+        setPaid,
         updateBill,
         deleteBill,
         selectedLocation,

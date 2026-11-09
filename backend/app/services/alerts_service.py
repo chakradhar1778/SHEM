@@ -82,7 +82,7 @@ def _inr(v: float) -> str:
 
 def _bill_due(db: Session, today: date) -> List[Notification]:
     out = []
-    for b in db.scalars(select(ElectricityBill)).all():
+    for b in db.scalars(select(ElectricityBill).where(ElectricityBill.paid_on.is_(None))).all():   # paid: no alerts
         due = _parse_iso(b.due_date)
         if due is None:
             continue

@@ -349,10 +349,16 @@ class ElectricityBillSchema(ApiModel):
     document_content_type: Optional[str] = None
     document_size: Optional[int] = None
     document_uploaded_at: Optional[UtcDateTime] = None
+    paid_on: Optional[str] = None            # local YYYY-MM-DD; None = unpaid
+    paid_at: Optional[UtcDateTime] = None
     units_consumed_kwh: float
     bill_amount_inr: float
     location_tag: Optional[str] = None
     created_at: Optional[UtcDateTime] = None
+
+
+class BillPaidRequest(ApiModel):
+    paid_on: Optional[Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}$")]] = None   # default: today (local)
 
 
 class ElectricityBillCreate(ApiModel):

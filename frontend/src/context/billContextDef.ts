@@ -54,6 +54,9 @@ export interface BillRecord {
   /** Upload in progress or failed (UI state only) */
   documentStatus?: 'uploading' | 'failed';
 
+  /** Local date (YYYY-MM-DD) the bill was paid; undefined = unpaid */
+  paidOn?: string;
+
   /** Timestamp when this bill record was created */
   createdAt: number;
 }
@@ -99,6 +102,9 @@ export interface BillContextType extends SyncState {
   /** Remove a bill's stored document */
   removeDocument: (id: string) => Promise<string | null>;
 
+  /** Mark a bill paid (paidOn YYYY-MM-DD, default today) or unpaid (paid = false). Resolves with an error or null. */
+  setPaid: (id: string, paid: boolean, paidOn?: string) => Promise<string | null>;
+
   /** Updates an existing bill record by ID with validation and persistence */
   updateBill: (id: string, input: Partial<BillInput>) => BillRecord | null;
 
@@ -113,6 +119,25 @@ export interface BillContextType extends SyncState {
 }
 
 export const HOME_LOCATION = 'my_home';
+
+export type BillPaymentTone = 'paid' | 'overdue' | 'due-soon' | 'due' | 'unpaid';
+
+const dayDiff = (iso: string, today: Date) =>
+  Math.round((new Date(`${iso}T12:00:00`).getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12).getTime()) / 86_400_000);
+
+const short = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+/** Payment status label for a bill (paid / overdue / due soon / due / unpaid). */
+export function billPaymentStatus(b: Pick<BillRecord, 'paidOn' | 'dueDate'>, today = new Date()): { tone: BillPaymentTone; label: string } {
+  if (b.paidOn) return { tone: 'paid', label: `Paid ${short(b.paidOn)}` };
+  const due = b.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(b.dueDate) ? b.dueDate : null;
+  if (!due) return { tone: 'unpaid', label: 'Unpaid' };
+  const d = dayDiff(due, today);
+  if (d < 0) return { tone: 'overdue', label: `Overdue · was due ${short(due)}` };
+  if (d === 0) return { tone: 'due-soon', label: 'Due today' };
+  if (d <= 3) return { tone: 'due-soon', label: `Due in ${d} day${d === 1 ? '' : 's'}` };
+  return { tone: 'due', label: `Due ${short(due)}` };
+}
 
 export const isHomeBill = (b: Pick<BillRecord, 'locationTag'>) => (b.locationTag || HOME_LOCATION) === HOME_LOCATION;
 

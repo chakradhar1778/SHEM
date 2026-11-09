@@ -234,3 +234,28 @@ def test_projected_bill_per_appliance(client, frozen):
     costs = {a["name"]: a["costINR"] for a in p["applianceCosts"]}
     variable = p["projected"]["totalINR"] - p["projected"]["fixedChargeINR"]
     assert abs(costs["AC"] - variable * 0.75) < 0.05 and abs(costs["TV"] - variable * 0.25) < 0.05
+
+
+
+# ── item 4: bill vs recorded usage (per day over the recorded hours) ──────────
+
+def test_bill_vs_recorded_usage_per_day(client, frozen):
+    bill = client.post("/api/bills", headers=AUTH, json={
+        "billingMonth": 2, "billingYear": 2026, "unitsConsumedKWh": 280, "billAmountINR": 2100}).json()
+    with SessionLocal() as db:   # 12 recorded hours, 6 kWh in total → 12 kWh per recorded day
+        for h in range(12):
+            _sim(db, "app-ac", "AC", from_local(datetime(2026, 2, 10, 8 + h)), 0.5)
+        db.commit()
+    r = client.get(f"/api/billing/bills/{bill['id']}/appliances", headers=AUTH).json()
+    assert r["periodDays"] == 28 and r["coveredHours"] == 12
+    assert r["billedDailyKWh"] == 10.0 and r["recordedDailyKWh"] == 12.0 and r["variancePercent"] == 20.0
+
+
+def test_recorded_daily_needs_enough_hours(client, frozen):
+    bill = client.post("/api/bills", headers=AUTH, json={
+        "billingMonth": 2, "billingYear": 2026, "unitsConsumedKWh": 280, "billAmountINR": 2100}).json()
+    with SessionLocal() as db:
+        _sim(db, "app-ac", "AC", from_local(datetime(2026, 2, 10, 8)), 2.0)
+        db.commit()
+    r = client.get(f"/api/billing/bills/{bill['id']}/appliances", headers=AUTH).json()
+    assert r["recordedDailyKWh"] is None and r["variancePercent"] is None and r["billedDailyKWh"] == 10.0

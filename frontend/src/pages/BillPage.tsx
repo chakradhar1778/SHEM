@@ -1,13 +1,13 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBill } from '../hooks/useBill';
-import { useInventory } from '../hooks/useInventory';
 import { PageHero } from '../components/art/PageHero';
 import { ArrowIcon, CalendarIcon, ChevronDown, CloseIcon, PlusIcon, SearchIcon, TrashIcon, UploadIcon, UserIcon } from '../components/ui/icons';
 import { RouteToast } from '../components/ui/RouteToast';
 import { ProjectedBillCard } from '../components/bill/ProjectedBillCard';
 import { BillCostSplit } from '../components/bill/BillCostSplit';
-import { calculateHouseholdDailyKWh, compareBillWithHousehold, formatCurrencyINR } from '../utils/billMath';
+import { BillVsUsageCard } from '../components/bill/BillVsUsageCard';
+import { formatCurrencyINR } from '../utils/billMath';
 import './BillPage.css';
 
 const PROVIDERS = ['BESCOM', 'Tata Power', 'Adani', 'MSEDCL', 'Other'];
@@ -27,7 +27,6 @@ function formatDue(value: string): string {
 export function BillPage() {
   const navigate = useNavigate();
   const { bills, latestBill, addBill, deleteBill, selectedLocation, setSelectedLocation } = useBill();
-  const { inventory } = useInventory();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const now = useMemo(() => new Date(), []);
@@ -47,14 +46,6 @@ export function BillPage() {
   const [errors, setErrors] = useState<{ units?: string; amount?: string; general?: string }>({});
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
-
-  const comparison = useMemo(
-    () =>
-      latestBill && inventory.length > 0
-        ? compareBillWithHousehold(latestBill, calculateHouseholdDailyKWh(inventory), inventory.length)
-        : null,
-    [latestBill, inventory]
-  );
 
   const pickLocation = (id: string) => {
     setLocation(id);
@@ -236,19 +227,7 @@ export function BillPage() {
         </div>
       </form>
 
-      {comparison?.isComparisonValid && comparison.estimatedKWh !== null && latestBill && (
-        <section className="card" aria-label="Compared with your appliances">
-          <div className="card__head"><h2 className="card__title">Bill vs your appliances</h2></div>
-          <div className="compare">
-            <div><b>{latestBill.unitsConsumed} kWh</b><span>On your bill</span></div>
-            <div><b>{comparison.estimatedKWh} kWh</b><span>Estimated from appliances</span></div>
-            {comparison.variancePercent !== null && (
-              <div><b className={comparison.variancePercent > 0 ? 'is-up' : 'is-down'}>{comparison.variancePercent > 0 ? '+' : ''}{comparison.variancePercent}%</b><span>Difference</span></div>
-            )}
-          </div>
-          <p className="bill__note">{comparison.statusExplanation}</p>
-        </section>
-      )}
+      {latestBill && <BillVsUsageCard key={latestBill.id} bill={latestBill} />}
 
       {bills.length > 0 && (
         <section className="card" aria-label="Bill history">

@@ -140,6 +140,10 @@ def bill_appliance_breakdown(bill_id: str, db: Session = Depends(get_db)) -> Bil
         fixed_charge_inr=round(r["fixed"], 2), variable_rate_inr=round(r["variable_rate"], 3),
         appliances=[share_schema(a) for a in r["appliances"]], rest_kwh=round(r["rest_kwh"], 3),
         rest_inr=r["rest_cost"], rest_percent=r["rest_percent"], notes=r["notes"],
+        period_days=round(r["period_days"], 2), covered_hours=r["covered_hours"],
+        billed_daily_kwh=round(r["billed_daily"], 3) if r["billed_daily"] is not None else None,
+        recorded_daily_kwh=round(r["recorded_daily"], 3) if r["recorded_daily"] is not None else None,
+        variance_percent=round(r["variance_percent"], 1) if r["variance_percent"] is not None else None,
     )
 
 

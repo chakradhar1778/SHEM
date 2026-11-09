@@ -25,11 +25,12 @@ Gaps found in the billing review (2026-11-10). Ordered by priority.
   Split each bill (and the projected bill) across appliances using the metered + simulated kWh measured in
   that bill's period, e.g. "AC = 52% of your October bill (₹640)".
 
-## Next
-
-- [ ] **4. Bill vs actual usage instead of rated-watt estimates**
+- [x] **4. Bill vs actual usage instead of rated-watt estimates** — done 2026-11-10
+  (Bill page → "Bill vs recorded usage": billed vs recorded kWh per day over the recorded hours)
   The Bill page compares a bill with rated W × hours/day. Compare with the metered + simulated kWh for the
   bill's real period (`billingPeriodStart` → `billingPeriodEnd`), and fall back to estimates only without data.
+
+## Next
 
 - [ ] **5. Billing cycle alignment everywhere**
   The Insights bill comparison uses `monthrange()` (calendar month). Use the bill's own period dates and

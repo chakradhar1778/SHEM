@@ -531,4 +531,11 @@ export interface BillApplianceBreakdown {
   restINR: number;
   restPercent: number;
   notes: string[];
+  periodDays: number;
+  coveredHours: number;
+  /** Bill kWh ÷ period days */
+  billedDailyKWh: number | null;
+  /** SHEM metered + simulated kWh per recorded day (needs ≥ 6 recorded hours) */
+  recordedDailyKWh: number | null;
+  variancePercent: number | null;
 }

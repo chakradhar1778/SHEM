@@ -412,7 +412,11 @@ def bill_period(bill, cycle_day: int) -> Tuple[date, date, str]:
 
 
 def bill_breakdown(db: Session, bill) -> dict:
-    """Where a recorded bill's money went: per appliance, fixed charge and unmeasured rest of home."""
+    """
+    A recorded bill vs what SHEM recorded in its period: the split per appliance (fixed charge, rest of
+    home) and the billed vs recorded kWh per day (over the hours SHEM was recording, so partial coverage
+    still compares fairly).
+    """
     from app.services.insights_service import _usage
 
     t = load_tariff(db)
@@ -423,8 +427,15 @@ def bill_breakdown(db: Session, bill) -> dict:
     total = bill.bill_amount_inr
     fixed = min(t.fixed_charge, total)
     alloc = allocate(u, bill.units_consumed_kwh, total - fixed, total)
+
     period_h = max((min(end, now) - start).total_seconds() / 3600.0, 0.0)
-    coverage = len(u.hours) / period_h * 100 if period_h > 0 else 0.0
+    covered_h = len(u.hours)
+    coverage = covered_h / period_h * 100 if period_h > 0 else 0.0
+    period_days = (end - start).total_seconds() / 86400.0
+    billed_daily = bill.units_consumed_kwh / period_days if period_days > 0 else None
+    recorded_daily = alloc["measured_kwh"] / covered_h * 24 if covered_h >= 6 and alloc["measured_kwh"] > 0 else None
+    variance = (recorded_daily - billed_daily) / billed_daily * 100 if recorded_daily and billed_daily else None
+
     notes = []
     if not alloc["appliances"]:
         notes.append("SHEM has no metered or simulated usage in this period, so the bill can't be split by appliance.")
@@ -435,7 +446,9 @@ def bill_breakdown(db: Session, bill) -> dict:
         notes.append(f"Usage was recorded for {coverage:.0f}% of the period, so the split covers only that time.")
     return {
         "period_start": start_d, "period_end": end_d, "period_source": source, "fixed": fixed,
-        "coverage_percent": min(100.0, coverage), "notes": notes, "usage": u, **alloc,
+        "period_days": period_days, "covered_hours": covered_h, "coverage_percent": min(100.0, coverage),
+        "billed_daily": billed_daily, "recorded_daily": recorded_daily, "variance_percent": variance,
+        "notes": notes, "usage": u, **alloc,
     }
 
 

@@ -734,6 +734,11 @@ class BillApplianceBreakdown(ApiModel):
     rest_inr: float
     rest_percent: float
     notes: List[str] = []
+    period_days: float = 0.0
+    covered_hours: int = 0
+    billed_daily_kwh: Optional[float] = None       # bill kWh ÷ period days
+    recorded_daily_kwh: Optional[float] = None     # SHEM metered + simulated kWh per recorded day (≥ 6 h data)
+    variance_percent: Optional[float] = None       # recorded vs billed, per day
 
 
 BillProjectionResponse.model_rebuild()

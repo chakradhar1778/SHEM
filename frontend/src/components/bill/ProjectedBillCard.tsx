@@ -3,6 +3,7 @@ import { fetchBillProjection } from '../../api/billingApi';
 import type { BillBreakdown, BillProjection } from '../../api/types';
 import { useApiQuery } from '../../hooks/useApiQuery';
 import { SourceTag } from '../appliances/SourceTag';
+import { CostSplitList } from './BillCostSplit';
 import { ArrowIcon } from '../ui/icons';
 import './ProjectedBillCard.css';
 
@@ -104,6 +105,21 @@ export function ProjectedBillCard({ compact = false }: { compact?: boolean }) {
               ? ` Stay under ${kwhFmt(b.dailyAllowanceKWh)} kWh/day to keep within it.`
               : ''}
           </p>
+        </div>
+      )}
+
+      {p.applianceCosts.length > 0 && (
+        <div className="projbill__where">
+          <h3 className="projbill__h3">Where this bill is going</h3>
+          <CostSplitList
+            items={p.applianceCosts}
+            total={p.projected.totalINR}
+            limit={5}
+            extras={[{
+              key: 'fixed', label: 'Fixed charge', sub: 'Every bill, regardless of usage', cost: p.projected.fixedChargeINR,
+              percent: p.projected.totalINR ? (p.projected.fixedChargeINR / p.projected.totalINR) * 100 : 0, icon: 'fixed',
+            }]}
+          />
         </div>
       )}
 

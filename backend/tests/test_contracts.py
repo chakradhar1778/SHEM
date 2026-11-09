@@ -185,6 +185,10 @@ def test_rest_responses_match_frontend_types(client):
     checks["BillBreakdown"] = proj["projected"]
     checks["BillLine"] = proj["projected"]["lines"][0]
     checks["BudgetStatus"] = proj["budget"]
+    if proj["applianceCosts"]:
+        checks["ApplianceBillShare"] = proj["applianceCosts"][0]
+    bill_id = client.get("/api/bills", headers=AUTH).json()[0]["id"]
+    checks["BillApplianceBreakdown"] = client.get(f"/api/billing/bills/{bill_id}/appliances", headers=AUTH).json()
 
     for interface, payload in checks.items():
         assert_matches(interface, payload)

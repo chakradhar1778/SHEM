@@ -47,3 +47,5 @@
 .projbill__table td:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .projbill__table small { display: block; font-size: 11px; color: var(--muted); }
 .projbill__table tr.is-total td { border-bottom: none; font-weight: 700; color: var(--ink); }
+.projbill__where { display: flex; flex-direction: column; gap: 10px; }
+.projbill__h3 { margin: 0; font-size: 14px; font-weight: 700; color: var(--ink); }

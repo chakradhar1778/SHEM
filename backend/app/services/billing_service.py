@@ -344,3 +344,111 @@ def budget_status(db: Session, proj: dict) -> Optional[dict]:
         "status": ("over" if proj["so_far"].total > budget else
                    "at_risk" if proj["projected"].total > budget else "on_track"),
     }
+
+
+# ═══════════════════════════════════════════════════════════════
+# COST PER APPLIANCE (bills and the projected bill)
+# ═══════════════════════════════════════════════════════════════
+
+@dataclass
+class ApplianceShare:
+    appliance_id: str
+    name: str
+    icon_type: Optional[str]
+    source: str                 # metered | simulated
+    kwh: float
+    share_percent: float        # of the bill's total amount
+    cost: float
+
+
+def appliance_kwh(usage) -> List[Tuple[str, float]]:
+    """(appliance key, kWh) from an insights _Usage, largest first."""
+    totals: Dict[str, float] = {}
+    for h in usage.hours.values():
+        for k, v in h.by_app.items():
+            totals[k] = totals.get(k, 0.0) + v
+    return sorted(((k, v) for k, v in totals.items() if v > 0), key=lambda x: x[1], reverse=True)
+
+
+def allocate(usage, billed_kwh: float, variable_amount: float, total_amount: float) -> dict:
+    """
+    Split `variable_amount` (bill minus fixed charge) across appliances by their kWh at the bill's own
+    average variable rate. Billed units SHEM did not measure become "rest of home". When measured kWh
+    exceeds the billed units (simulated devices aren't on the real meter), shares are scaled to fit.
+    """
+    items = appliance_kwh(usage)
+    measured = sum(v for _, v in items)
+    rate = variable_amount / billed_kwh if billed_kwh > 0 else 0.0
+    scale = min(1.0, billed_kwh / measured) if measured > 0 else 0.0
+    shares: List[ApplianceShare] = []
+    for key, kwh in items:
+        m = usage.meta[key]
+        cost = kwh * scale * rate
+        shares.append(ApplianceShare(key, m.name, m.icon_type, m.source, round(kwh, 4),
+                                     round(cost / total_amount * 100, 1) if total_amount > 0 else 0.0,
+                                     round(cost, 2)))
+    rest_kwh = max(0.0, billed_kwh - measured)
+    rest_cost = rest_kwh * rate
+    return {
+        "measured_kwh": measured, "scale": scale, "variable_rate": rate, "appliances": shares,
+        "rest_kwh": rest_kwh, "rest_cost": round(rest_cost, 2),
+        "rest_percent": round(rest_cost / total_amount * 100, 1) if total_amount > 0 else 0.0,
+    }
+
+
+def bill_period(bill, cycle_day: int) -> Tuple[date, date, str]:
+    """Local [start, end) of a recorded bill: its own dates, else the billing cycle starting in its month."""
+    if bill.billing_period_start and bill.billing_period_end:
+        try:
+            s, e = date.fromisoformat(bill.billing_period_start), date.fromisoformat(bill.billing_period_end)
+            if e >= s:
+                return s, date.fromordinal(e.toordinal() + 1), "dates"     # bill end date is inclusive
+        except ValueError:
+            pass
+    if bill.billing_month and bill.billing_year:
+        s = date(bill.billing_year, bill.billing_month, cycle_day)
+        return s, _add_month(s), "cycle"
+    raise ValueError("This bill has no billing period (month/year or start/end dates).")
+
+
+def bill_breakdown(db: Session, bill) -> dict:
+    """Where a recorded bill's money went: per appliance, fixed charge and unmeasured rest of home."""
+    from app.services.insights_service import _usage
+
+    t = load_tariff(db)
+    start_d, end_d, source = bill_period(bill, t.cycle_day)
+    start, end = cycle_instants(start_d, end_d)
+    now = utcnow()
+    u = _usage(db, settings.device_id, start, min(end, now))
+    total = bill.bill_amount_inr
+    fixed = min(t.fixed_charge, total)
+    alloc = allocate(u, bill.units_consumed_kwh, total - fixed, total)
+    period_h = max((min(end, now) - start).total_seconds() / 3600.0, 0.0)
+    coverage = len(u.hours) / period_h * 100 if period_h > 0 else 0.0
+    notes = []
+    if not alloc["appliances"]:
+        notes.append("SHEM has no metered or simulated usage in this period, so the bill can't be split by appliance.")
+    elif alloc["scale"] < 1.0:
+        notes.append(f"SHEM recorded {alloc['measured_kwh']:.1f} kWh but the bill has {bill.units_consumed_kwh:g} kWh; "
+                     "shares are scaled to the billed units (simulated devices aren't on the real meter).")
+    if coverage < 90 and alloc["appliances"]:
+        notes.append(f"Usage was recorded for {coverage:.0f}% of the period, so the split covers only that time.")
+    return {
+        "period_start": start_d, "period_end": end_d, "period_source": source, "fixed": fixed,
+        "coverage_percent": min(100.0, coverage), "notes": notes, "usage": u, **alloc,
+    }
+
+
+def projected_appliance_costs(proj: dict) -> List[ApplianceShare]:
+    """Projected bill per appliance: each appliance's cycle-to-date kWh share of the projected usage charges."""
+    b: BillBreakdown = proj["projected"]
+    variable_total = b.total - b.fixed_charge
+    items = appliance_kwh(proj["usage"])
+    used = sum(v for _, v in items)
+    out = []
+    for key, kwh in items:
+        m = proj["usage"].meta[key]
+        cost = variable_total * kwh / used if used > 0 else 0.0
+        out.append(ApplianceShare(key, m.name, m.icon_type, m.source, round(kwh, 4),
+                                  round(cost / b.total * 100, 1) if b.total > 0 else 0.0, round(cost, 2)))
+    return out

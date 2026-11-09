@@ -171,3 +171,66 @@ def test_budget_below_fixed_charge_is_flagged(client, frozen):
     with SessionLocal() as db:
         ids = {c.id for c in detect_conflicts(db, mqtt_connected=True)}
     assert "target-below-fixed" in ids
+
+
+
+# ── item 3: cost per appliance on each bill ────────────────────────────────────
+
+def _sim(db, appliance_id, name, bucket, kwh):
+    from app.models.db_models import SimEnergyHourly
+    db.add(SimEnergyHourly(appliance_id=appliance_id, appliance_name=name, icon_type="ac", category="Cooling",
+                           bucket_start=bucket, energy_kwh=kwh, on_seconds=3600, power_max=1000, samples=1))
+
+
+def test_bill_split_across_appliances_fixed_and_rest(client, frozen):
+    put_tariff(client, fixedChargeINR=100)
+    bill = client.post("/api/bills", headers=AUTH, json={
+        "billingMonth": 2, "billingYear": 2026, "unitsConsumedKWh": 100, "billAmountINR": 900}).json()
+    seed([(from_local(datetime(2026, 2, 2)), 0.0, 100), (from_local(datetime(2026, 2, 20)), 20.0, 100)])
+    with SessionLocal() as db:
+        _sim(db, "app-ac", "AC", from_local(datetime(2026, 2, 10, 22)), 50.0)
+        _sim(db, "app-ac", "AC", from_local(datetime(2026, 3, 2, 22)), 99.0)      # next period: ignored
+        db.commit()
+    r = client.get(f"/api/billing/bills/{bill['id']}/appliances", headers=AUTH).json()
+    assert r["periodStart"] == "2026-02-01" and r["periodEnd"] == "2026-03-01" and r["periodSource"] == "cycle"
+    assert r["measuredKWh"] == 70.0 and r["meteredKWh"] == 20.0 and r["simulatedKWh"] == 50.0
+    assert r["fixedChargeINR"] == 100 and r["variableRateINR"] == 8.0      # (900 − 100) / 100 kWh
+    shares = {a["name"]: a for a in r["appliances"]}
+    assert shares["AC"]["costINR"] == 400.0 and shares["AC"]["source"] == "simulated"
+    assert shares["Metered circuit"]["costINR"] == 160.0
+    assert r["restKWh"] == 30.0 and r["restINR"] == 240.0
+    total = sum(a["costINR"] for a in r["appliances"]) + r["fixedChargeINR"] + r["restINR"]
+    assert abs(total - 900) < 0.01                                          # every rupee accounted for
+
+
+def test_bill_split_scales_when_measured_exceeds_billed(client, frozen):
+    bill = client.post("/api/bills", headers=AUTH, json={
+        "billingPeriodStart": "2026-02-05", "billingPeriodEnd": "2026-02-06",
+        "unitsConsumedKWh": 10, "billAmountINR": 75}).json()
+    with SessionLocal() as db:
+        _sim(db, "app-ac", "AC", from_local(datetime(2026, 2, 6, 20)), 40.0)  # end date is inclusive
+        db.commit()
+    r = client.get(f"/api/billing/bills/{bill['id']}/appliances", headers=AUTH).json()
+    assert r["periodSource"] == "dates" and r["periodEnd"] == "2026-02-07"
+    assert r["appliances"][0]["costINR"] == 75.0 and r["restINR"] == 0
+    assert any("scaled" in n for n in r["notes"])
+
+
+def test_bill_without_period_or_usage(client, frozen):
+    empty = client.post("/api/bills", headers=AUTH, json={
+        "billingMonth": 1, "billingYear": 2026, "unitsConsumedKWh": 50, "billAmountINR": 400}).json()
+    r = client.get(f"/api/billing/bills/{empty['id']}/appliances", headers=AUTH).json()
+    assert r["appliances"] == [] and r["restINR"] == 400 and r["notes"]
+    assert client.get("/api/billing/bills/nope/appliances", headers=AUTH).status_code == 404
+
+
+def test_projected_bill_per_appliance(client, frozen):
+    put_tariff(client, fixedChargeINR=50)
+    with SessionLocal() as db:
+        _sim(db, "app-ac", "AC", L(5, 22), 30.0)
+        _sim(db, "app-tv", "TV", L(6, 20), 10.0)
+        db.commit()
+    p = client.get("/api/billing/projection", headers=AUTH).json()
+    costs = {a["name"]: a["costINR"] for a in p["applianceCosts"]}
+    variable = p["projected"]["totalINR"] - p["projected"]["fixedChargeINR"]
+    assert abs(costs["AC"] - variable * 0.75) < 0.05 and abs(costs["TV"] - variable * 0.25) < 0.05

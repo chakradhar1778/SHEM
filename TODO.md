@@ -19,11 +19,13 @@ Gaps found in the billing review (2026-11-10). Ordered by priority.
   - All cost estimates (insights, today, target kWh) use the configured tariff, not a flat kWh × rate.
   - The "bill rate differs from tariff" check compares the bill with the engine's expected amount.
 
-## Next
-
-- [ ] **3. Cost per appliance on each bill**
+- [x] **3. Cost per appliance on each bill** — done 2026-11-10
+  (Bill history → "Where the money went"; "Where this bill is going" on the projected bill;
+  `/api/billing/bills/{id}/appliances`)
   Split each bill (and the projected bill) across appliances using the metered + simulated kWh measured in
   that bill's period, e.g. "AC = 52% of your October bill (₹640)".
+
+## Next
 
 - [ ] **4. Bill vs actual usage instead of rated-watt estimates**
   The Bill page compares a bill with rated W × hours/day. Compare with the metered + simulated kWh for the

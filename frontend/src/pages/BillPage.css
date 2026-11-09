@@ -75,3 +75,6 @@
 .bill-hist { padding: 6px 0; border-bottom: 1px solid var(--line); border-radius: 0; }
 .bill-hist:last-child { border-bottom: none; }
 .bill-hist__amt { font-size: 15px; }
+
+.bill-hist-item { display: flex; flex-direction: column; gap: 4px; }
+.bill-hist__toggle { align-self: flex-start; margin-left: 4px; font-size: 12.5px; }

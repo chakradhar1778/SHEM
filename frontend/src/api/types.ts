@@ -494,5 +494,41 @@ export interface BillProjection {
   projected: BillBreakdown;
   tariff: Tariff;
   budget: BudgetStatus | null;
+  /** Projected bill split by appliance (usage charges only; the fixed charge is separate). */
+  applianceCosts: ApplianceBillShare[];
   disclaimer: string;
+}
+
+export interface ApplianceBillShare {
+  applianceId: string;
+  name: string;
+  iconType: string | null;
+  source: UsageSource;
+  kwh: number;
+  /** Share of the bill's total amount */
+  sharePercent: number;
+  costINR: number;
+}
+
+/** A recorded bill split across appliances, the fixed charge and unmeasured "rest of home". */
+export interface BillApplianceBreakdown {
+  billId: string;
+  billingLabel: string;
+  periodStart: string;
+  /** Exclusive */
+  periodEnd: string;
+  periodSource: 'dates' | 'cycle';
+  billKWh: number;
+  billAmountINR: number;
+  measuredKWh: number;
+  meteredKWh: number;
+  simulatedKWh: number;
+  coveragePercent: number;
+  fixedChargeINR: number;
+  variableRateINR: number;
+  appliances: ApplianceBillShare[];
+  restKWh: number;
+  restINR: number;
+  restPercent: number;
+  notes: string[];
 }

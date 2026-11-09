@@ -697,8 +697,43 @@ class BillProjectionResponse(ApiModel):
     projected: BillBreakdownSchema
     tariff: TariffSchema
     budget: Optional[BudgetStatus] = None
+    appliance_costs: List["ApplianceBillShare"] = []
     disclaimer: str
 
 
 class BillEstimateRequest(ApiModel):
     kwh: float = Field(..., ge=0, le=1_000_000)
+
+
+class ApplianceBillShare(ApiModel):
+    appliance_id: str
+    name: str
+    icon_type: Optional[str] = None
+    source: Literal["metered", "simulated"]
+    kwh: float
+    share_percent: float
+    cost_inr: float
+
+
+class BillApplianceBreakdown(ApiModel):
+    bill_id: str
+    billing_label: str
+    period_start: str                   # local YYYY-MM-DD, inclusive
+    period_end: str                     # local YYYY-MM-DD, exclusive
+    period_source: Literal["dates", "cycle"]
+    bill_kwh: float
+    bill_amount_inr: float
+    measured_kwh: float
+    metered_kwh: float
+    simulated_kwh: float
+    coverage_percent: float
+    fixed_charge_inr: float
+    variable_rate_inr: float
+    appliances: List[ApplianceBillShare]
+    rest_kwh: float
+    rest_inr: float
+    rest_percent: float
+    notes: List[str] = []
+
+
+BillProjectionResponse.model_rebuild()

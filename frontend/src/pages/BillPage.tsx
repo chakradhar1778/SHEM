@@ -6,6 +6,7 @@ import { PageHero } from '../components/art/PageHero';
 import { ArrowIcon, CalendarIcon, ChevronDown, CloseIcon, PlusIcon, SearchIcon, TrashIcon, UploadIcon, UserIcon } from '../components/ui/icons';
 import { RouteToast } from '../components/ui/RouteToast';
 import { ProjectedBillCard } from '../components/bill/ProjectedBillCard';
+import { BillCostSplit } from '../components/bill/BillCostSplit';
 import { calculateHouseholdDailyKWh, compareBillWithHousehold, formatCurrencyINR } from '../utils/billMath';
 import './BillPage.css';
 
@@ -42,6 +43,7 @@ export function BillPage() {
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
+  const [openBill, setOpenBill] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ units?: string; amount?: string; general?: string }>({});
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
@@ -253,15 +255,26 @@ export function BillPage() {
           <div className="card__head"><h2 className="card__title">Bill history</h2></div>
           <div className="list">
             {bills.map((b) => (
-              <div key={b.id} className="row row--plain bill-hist">
-                <span className="row__body">
-                  <span className="row__title">{b.billingPeriod}</span>
-                  <span className="row__sub">{b.utilityProvider} · {b.unitsConsumed} kWh</span>
-                </span>
-                <b className="bill-hist__amt">{formatCurrencyINR(b.billAmount)}</b>
-                <button type="button" className="icon-btn" aria-label={`Delete bill for ${b.billingPeriod}`} onClick={() => deleteBill(b.id)}>
-                  <TrashIcon />
+              <div key={b.id} className="bill-hist-item">
+                <div className="row row--plain bill-hist">
+                  <span className="row__body">
+                    <span className="row__title">{b.billingPeriod}</span>
+                    <span className="row__sub">{b.utilityProvider} · {b.unitsConsumed} kWh</span>
+                  </span>
+                  <b className="bill-hist__amt">{formatCurrencyINR(b.billAmount)}</b>
+                  <button type="button" className="icon-btn" aria-label={`Delete bill for ${b.billingPeriod}`} onClick={() => deleteBill(b.id)}>
+                    <TrashIcon />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="btn-link bill-hist__toggle"
+                  aria-expanded={openBill === b.id}
+                  onClick={() => setOpenBill(openBill === b.id ? null : b.id)}
+                >
+                  {openBill === b.id ? 'Hide breakdown' : 'Where the money went'}
                 </button>
+                {openBill === b.id && <BillCostSplit billId={b.id} />}
               </div>
             ))}
           </div>

@@ -308,6 +308,16 @@ def t_bill_projection(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
     return _dump(build_projection(ctx.db))
 
 
+@tool("get_bill_appliance_breakdown",
+      "Split a RECORDED bill's ₹ across appliances using metered + simulated kWh in that bill's period, plus the "
+      "fixed charge and 'rest of home' (billed units SHEM didn't measure). Use list_bills for ids.",
+      {"type": "object", "properties": {"bill_id": {"type": "string"}}, "required": ["bill_id"]},
+      label="Splitting the bill")
+def t_bill_breakdown(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:
+    from app.api.billing import bill_appliance_breakdown
+    return _dump(bill_appliance_breakdown(str(args.get("bill_id")), ctx.db))
+
+
 @tool("get_tariff", "Tariff settings used for every cost: flat or slab rates, fixed charge, fuel adjustment, "
       "electricity duty and billing-cycle day.", label="Reading tariff")
 def t_get_tariff(ctx: ToolContext, args: Dict[str, Any]) -> Dict[str, Any]:

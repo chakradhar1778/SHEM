@@ -204,7 +204,13 @@ def test_rest_responses_match_frontend_types(client):
 @pytestmark_frontend
 def test_websocket_snapshot_matches_frontend_types(client):
     with client.websocket_connect("/api/stream?api_key=test-key") as ws:
+        # A broadcast (heartbeat, notification from an earlier test …) can arrive before the snapshot.
         snap = ws.receive_json()
+        for _ in range(20):
+            if snap["type"] == "init_snapshot":
+                break
+            snap = ws.receive_json()
+        assert snap["type"] == "init_snapshot"
     assert_matches("InitSnapshot", snap["data"])
     assert_matches("DeviceStatus", snap["data"]["deviceStatus"])
     assert_matches("RelayStatus", snap["data"]["relayStatus"])

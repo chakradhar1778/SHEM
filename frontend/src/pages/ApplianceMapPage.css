@@ -1,0 +1,50 @@
+.map { background: linear-gradient(160deg, #F4F7FD, #E9EFFA); padding: 12px; }
+.map__plan { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; border-radius: 22px; background: #fff; box-shadow: inset 0 0 0 3px #DCE5F5; }
+.map__room { min-height: 104px; padding: 10px; border-radius: 14px; background: #F6F8FD; border: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.map__room:first-child:nth-last-child(odd) { grid-column: 1 / -1; }
+.map__room-name { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink); }
+.map__pins { display: flex; flex-wrap: wrap; gap: 8px; }
+.map__empty { font-size: 11.5px; color: var(--muted); }
+
+.pin {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 4px 10px rgba(27, 42, 92, 0.16);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.pin i { position: absolute; right: 1px; bottom: 1px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid #fff; background: #B7C1D8; }
+.pin--on i { background: var(--green); }
+.pin--off i { background: #8793B3; }
+.pin b { position: absolute; top: -4px; left: -2px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--ink); color: #fff; font-size: 10.5px; display: grid; place-items: center; }
+.pin.is-selected { box-shadow: 0 0 0 3px var(--blue), 0 4px 10px rgba(27, 42, 92, 0.16); }
+
+.map__popover {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--shadow-card);
+  color: var(--ink);
+  text-decoration: none;
+}
+.map__popover > span { flex: 1; display: flex; flex-direction: column; }
+.map__popover > span span { font-size: 12px; color: var(--muted); }
+
+.legend-card { display: grid; grid-template-columns: repeat(3, 1fr); padding: 12px 8px; border-radius: 22px; background: #fff; box-shadow: var(--shadow-card); }
+.legend-card div { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.legend-card div + div { border-left: 1px solid var(--line); }
+.legend-card b { font-size: 18px; }
+.legend-card span { font-size: 11.5px; color: var(--muted); }
+.dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot--on { background: var(--green); }
+.dot--off { background: #8793B3; }
+.dot--untracked { background: #B7C1D8; }

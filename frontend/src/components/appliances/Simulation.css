@@ -1,0 +1,62 @@
+/* Simulated appliances: source tags, switch extras, control card */
+
+:root {
+  --sim: #7A5AF8;
+  --sim-soft: #EFEAFE;
+}
+
+.src-tag {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.5;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.src-tag--sim { background: var(--sim-soft); color: var(--sim); }
+.src-tag--metered { background: var(--green-soft, #E3F6EC); color: #168a5b; }
+.src-tag--compact { padding: 1px 6px; font-size: 9.5px; }
+
+.sim-toggle__w { min-width: 44px; text-align: right; font-size: 12px; font-weight: 700; color: var(--muted, #7C8BAE); font-variant-numeric: tabular-nums; }
+.sim-toggle__w.is-on { color: var(--ink, #1B2A5C); }
+.sim-toggle__mode { font-size: 10.5px; color: var(--muted, #7C8BAE); white-space: nowrap; }
+
+.sim-dot { display: inline-block; width: 8px; height: 8px; margin-right: 2px; border-radius: 50%; background: #C9D3E8; vertical-align: middle; }
+.sim-dot.is-on { background: var(--green, #1FA971); box-shadow: 0 0 0 3px rgba(31, 169, 113, 0.18); }
+
+.sim-control .relay-row { border-color: #E4DCFD; background: #FBFAFF; }
+.sim-control .relay-row__name { display: inline-flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
+.sim-control__meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 8px 4px 0; font-size: 12px; color: var(--ink-2, #3A4A7C); }
+.sim-control__resume {
+  border: none;
+  background: var(--sim-soft);
+  color: var(--sim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.sim-control__resume:disabled { opacity: 0.6; cursor: default; }
+.sim-control__error { color: var(--red, #E5484D); }
+
+/* Per-appliance breakdown rows (dashboard, Energy today, Insights) */
+.usage-list { display: flex; flex-direction: column; gap: 10px; }
+.usage-row { display: flex; align-items: center; gap: 10px; }
+.usage-row__icon { flex: none; width: 40px; height: 40px; border-radius: 14px; background: #F1F4FA; display: grid; place-items: center; }
+.usage-row__body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.usage-row__top { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.usage-row__name { font-size: 13.5px; font-weight: 600; color: var(--ink, #1B2A5C); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.usage-row__sub { font-size: 11px; color: var(--muted, #7C8BAE); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.usage-row__track { height: 6px; border-radius: 999px; background: #E6ECF7; overflow: hidden; }
+.usage-row__track span { display: block; height: 100%; border-radius: 999px; background: var(--blue, #3B6FE0); }
+.usage-row__track span.is-sim { background: var(--sim); }
+.usage-row__val { flex: none; min-width: 64px; text-align: right; display: flex; flex-direction: column; gap: 1px; font-size: 13px; font-weight: 700; color: var(--ink, #1B2A5C); font-variant-numeric: tabular-nums; }
+.usage-row__val span { font-size: 11px; font-weight: 500; color: var(--muted, #7C8BAE); }
+.usage-row__val .is-on { color: var(--green, #1FA971); font-weight: 700; }

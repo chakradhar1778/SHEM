@@ -1,0 +1,150 @@
+/* ============================================================
+   SHEM — Smart Home Energy Management System
+   Global Design Tokens & Base Styles (Mobile Android Direction)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
+
+/* ---- Design Tokens (Client Light / Pale Ice-Blue Palette) ---- */
+:root {
+  /* Surfaces */
+  --bg-stage: #E6EDF5;
+  --bg-body: #EEF4FA;
+  --bg-card: #FFFFFF;
+  --bg-card-inset: #F4F8FC;
+  --bg-card-hover: #F8FAFD;
+  --bg-porcelain: #FAF7F0;
+
+  /* Typography Colors */
+  --text-navy: #122448;
+  --text-primary: #122448;
+  --text-secondary: #5A6E85;
+  --text-muted: #8B9DAF;
+
+  /* Accents & Brand */
+  --accent-blue: #3B82F6;
+  --accent-navy: #122448;
+  --accent-tint: rgba(59, 130, 246, 0.08);
+  --accent-glow: rgba(59, 130, 246, 0.15);
+  --accent-teal: #3B82F6;
+  --accent-cyan: #22D3EE;
+  --accent-gradient: linear-gradient(135deg, #122448, #25447A);
+
+  /* Status Colors */
+  --status-ok: #10B981;
+  --status-warning: #F59E0B;
+  --status-fault: #EF4444;
+  --status-standby: #94A3B8;
+
+  /* Borders */
+  --border-subtle: rgba(18, 36, 72, 0.08);
+  --border-accent: rgba(59, 130, 246, 0.25);
+  --border-focus: rgba(18, 36, 72, 0.25);
+
+  /* Border Radii */
+  --radius-card: 22px;
+  --radius-sm: 12px;
+  --radius-pill: 9999px;
+
+  /* Typography Families */
+  --font-serif: 'DM Serif Display', Georgia, serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-family: var(--font-sans);
+
+  /* Shadows */
+  --shadow-card: 0 4px 18px rgba(18, 36, 72, 0.05), 0 1px 3px rgba(18, 36, 72, 0.03);
+  --shadow-floating: 0 10px 30px rgba(18, 36, 72, 0.08), 0 2px 6px rgba(18, 36, 72, 0.04);
+  --shadow-bottomnav: 0 -4px 20px rgba(18, 36, 72, 0.06);
+  --shadow-glow: 0 0 24px rgba(59, 130, 246, 0.12);
+
+  /* Shell Layout Dimensions */
+  --app-width: 412px;
+  --topbar-height: 58px;
+  --bottomnav-height: 68px;
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+}
+
+/* ---- Reset & Base Styles ---- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-stage);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* ---- Typography Helpers ---- */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-navy);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.font-serif {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+h1.display-title {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  color: var(--text-navy);
+  font-weight: 400;
+  line-height: 1.15;
+}
+
+h2.display-subtitle {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  color: var(--text-navy);
+  font-weight: 400;
+}
+
+p {
+  color: var(--text-secondary);
+}
+
+/* ---- Utility Classes ---- */
+.text-navy { color: var(--text-navy); }
+.text-blue { color: var(--accent-blue); }
+.text-ok { color: var(--status-ok); }
+.text-warning { color: var(--status-warning); }
+.text-fault { color: var(--status-fault); }
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
+
+/* ---- Scrollbar ---- */
+::-webkit-scrollbar {
+  width: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(18, 36, 72, 0.12);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(18, 36, 72, 0.25);
+}

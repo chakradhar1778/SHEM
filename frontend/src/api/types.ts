@@ -1,0 +1,420 @@
+/**
+ * SHEM — Backend response/request shapes (mirror backend/app/models/schemas.py).
+ * Datetimes are UTC ISO 8601 strings.
+ */
+
+import type { AIActionEvent, Conflict, DailyInsight } from './aiTypes';
+
+export type RelayState = 'ON' | 'OFF';
+
+export interface HealthResponse {
+  status: 'ok' | 'degraded';
+  version: string;
+  dbOk: boolean;
+  mqttConnected: boolean;
+  timestamp: string;
+}
+
+export interface DeviceStatus {
+  deviceId: string;
+  mqttConnected: boolean;
+  deviceOnline: boolean;
+  connectionStatus: 'online' | 'offline' | 'unknown' | string;
+  lastSeenAt: string | null;
+  pzemReadingsValid: boolean;
+  relay1State: RelayState | null;
+  staleSince: string | null;
+}
+
+/** One physical AC reading from the PZEM-004T. */
+export interface TelemetryReading {
+  id?: number | null;
+  deviceId: string;
+  voltageV: number | null;
+  currentA: number | null;
+  activePowerW: number | null;
+  energyKWh: number | null;
+  frequencyHz: number | null;
+  powerFactor: number | null;
+  relay1State: string | null;
+  /** Measured load activity (power above threshold) — NOT the relay state */
+  loadActive: boolean | null;
+  supplyType: string;
+  source: string;
+  validity: string;
+  validityReason?: string | null;
+  measuredAt: string | null;
+  receivedAt: string | null;
+}
+
+export interface LatestTelemetryResponse {
+  available: boolean;
+  stale: boolean;
+  ageSeconds: number | null;
+  reading: TelemetryReading | null;
+  message: string | null;
+}
+
+export interface TelemetryHistoryPoint {
+  timestamp: string;
+  samples: number;
+  voltageV: number | null;
+  currentA: number | null;
+  activePowerW: number | null;
+  maxPowerW: number | null;
+  energyKWh: number | null;
+  energyUsedKWh: number | null;
+  frequencyHz: number | null;
+  powerFactor: number | null;
+}
+
+export interface TelemetryHistoryResponse {
+  deviceId: string;
+  fromTime: string;
+  toTime: string;
+  resolution: string;
+  count: number;
+  truncated: boolean;
+  dataNote: string | null;
+  readings: TelemetryHistoryPoint[];
+}
+
+export interface RelayStatus {
+  deviceId: string;
+  channel: number;
+  commandedState: RelayState | null;
+  lastReportedAt: string | null;
+}
+
+export type RelayCommandStatus =
+  | 'pending'
+  | 'published'
+  | 'applied'
+  | 'rejected_expired'
+  | 'rejected_invalid_channel'
+  | 'rejected_invalid_state'
+  | 'rejected_time_unsynchronized'
+  | 'timeout'
+  | 'publish_failed';
+
+export interface RelayCommandResponse {
+  commandId: string;
+  channel: number;
+  requestedState: RelayState;
+  status: RelayCommandStatus;
+  message: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface RelayCommandDetail {
+  commandId: string;
+  deviceId: string;
+  channel: number;
+  requestedState: RelayState;
+  status: RelayCommandStatus;
+  createdAt: string;
+  publishedAt: string | null;
+  acknowledgedAt: string | null;
+  expiresAt: string | null;
+  errorMessage: string | null;
+  /** present on relay_update stream events */
+  commandedState?: RelayState;
+}
+
+export interface HouseholdConfigDTO {
+  homeName: string;
+  location: string | null;
+  homeType: string;
+  occupants: number;
+  floorAreaSqm: number | null;
+  utilityProvider: string | null;
+  tariffRateINRPerKWh: number;
+  isConfigured: boolean;
+  updatedAt: string | null;
+}
+
+export interface RoomDTO {
+  id: string;
+  name: string;
+  roomType: string | null;
+  floor: number | null;
+  createdAt: string | null;
+}
+
+export interface ApplianceDTO {
+  id: string;
+  roomId: string | null;
+  catalogueId: string | null;
+  name: string;
+  category: string | null;
+  iconType: string | null;
+  ratedWatts: number | null;
+  quantity: number;
+  dailyHours: number;
+  status: string;
+  isEssential: 'yes' | 'no' | 'unsure' | null;
+  brand: string | null;
+  model: string | null;
+  purchaseYear: number | null;
+  notes: string | null;
+  /** Relay channel that switches this appliance (null = not relay-controlled) */
+  relayChannel: number | null;
+  /** True when not on a relay → runs as a realistic simulated device */
+  isSimulated: boolean;
+  /** Simulated only: follow the daily routine built from dailyHours */
+  simAuto: boolean;
+  simManualState: 'ON' | 'OFF' | null;
+  simOverrideUntil: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface BillDTO {
+  id: string;
+  utilityProvider: string | null;
+  accountId: string | null;
+  billingMonth: number | null;
+  billingYear: number | null;
+  billingPeriod: string | null;
+  billingPeriodStart: string | null;
+  billingPeriodEnd: string | null;
+  billingPeriodDays: number | null;
+  dueDate: string | null;
+  documentFilename: string | null;
+  unitsConsumedKWh: number;
+  billAmountINR: number;
+  locationTag: string | null;
+  createdAt: string | null;
+}
+
+export interface TargetDTO {
+  monthlyBudgetINR: number;
+  targetType: 'budget' | 'reduction';
+  isConfigured: boolean;
+  monthlyTargetKWh: number | null;
+  updatedAt: string | null;
+}
+
+// ── Insights ──────────────────────────────────────────────────────────────────
+
+export type InsightsPeriod = 'week' | 'month' | 'year';
+
+export interface InsightsTrendPoint {
+  label: string;
+  start: string;
+  usageKWh: number;
+  targetKWh: number | null;
+  isPeak: boolean;
+  /** false → no telemetry in this bucket (shown as 0, not estimated) */
+  measured: boolean;
+}
+
+/** Household rated-load ESTIMATE per category (not a meter reading). */
+export interface CategoryShare {
+  categoryId: string;
+  categoryLabel: string;
+  iconType: string;
+  kwh: number;
+  percentage: number;
+  percentChange: number | null;
+  direction: 'up' | 'down' | 'neutral';
+}
+
+export interface InsightsResponse {
+  period: InsightsPeriod;
+  periodLabel: string;
+  periodStart: string;
+  periodEnd: string;
+  totalKWh: number;
+  totalCostINR: number;
+  effectiveRateINR: number;
+  isCostEstimated: boolean;
+  rateDisclosure: string;
+  hasData: boolean;
+  isModelledEstimate: boolean;
+  coverageHours: number;
+  expectedHours: number;
+  dataNote: string | null;
+  methodologyNote: string;
+  keyInsight: { title: string; description: string; peakPeriod: string | null };
+  trendPoints: InsightsTrendPoint[];
+  shifts: CategoryShare[];
+  shiftsAreEstimates: boolean;
+  comparison: { previousKWh: number; previousCoverageHours: number; percentChange: number | null } | null;
+  billComparison: {
+    billingLabel: string;
+    billDailyKWh: number;
+    billRateINR: number;
+    measuredDailyKWh: number | null;
+  } | null;
+  meteredKWh: number;
+  simulatedKWh: number;
+  applianceUsage: ApplianceUsage[];
+}
+
+export type UsageSource = 'metered' | 'simulated';
+
+/** Energy of one appliance in a period: metered (relay circuit, PZEM) or simulated. */
+export interface ApplianceUsage {
+  applianceId: string;
+  name: string;
+  iconType: string | null;
+  category: string | null;
+  roomName: string | null;
+  source: UsageSource;
+  kwh: number;
+  percentage: number;
+  costINR: number;
+  onHours: number | null;
+  peakHour: number | null;
+  peakHourLabel: string | null;
+}
+
+export interface HourlyPoint {
+  hour: number;
+  timeLabel: string;
+  usageKWh: number;
+  meteredKWh: number;
+  simulatedKWh: number;
+  targetKWh: number | null;
+  isPeak: boolean;
+  measured: boolean;
+}
+
+export interface PeriodTopAppliance {
+  applianceId: string;
+  name: string;
+  iconType: string | null;
+  source: UsageSource;
+  kwh: number;
+}
+
+export type DayPeriodKey = 'night' | 'morning' | 'afternoon' | 'evening';
+
+export interface DayPeriodBreakdown {
+  period: DayPeriodKey;
+  label: string;
+  timeRange: string;
+  kwh: number;
+  percentage: number;
+  meteredKWh: number;
+  simulatedKWh: number;
+  costINR: number;
+  avgPowerW: number;
+  isPeak: boolean;
+  peakHour: number | null;
+  peakHourLabel: string | null;
+  peakHourKWh: number | null;
+  topAppliances: PeriodTopAppliance[];
+}
+
+export interface PeakSummary {
+  period: DayPeriodKey | null;
+  periodLabel: string | null;
+  hour: number | null;
+  hourLabel: string | null;
+  hourKWh: number | null;
+  avgPowerW: number | null;
+  topAppliance: string | null;
+}
+
+export interface TodayInsightsResponse {
+  date: string;
+  isToday: boolean;
+  hasData: boolean;
+  energyTodayKWh: number;
+  dailyTargetKWh: number | null;
+  isTargetConfigured: boolean;
+  costTodayINR: number;
+  effectiveRateINR: number;
+  rateDisclosure: string;
+  hourlyPoints: HourlyPoint[];
+  dayPeriods: DayPeriodBreakdown[];
+  applianceBreakdown: CategoryShare[];
+  insightCard: { title: string; description: string; badgeText: string };
+  dataNote: string | null;
+  methodologyNote: string;
+  meteredKWh: number;
+  simulatedKWh: number;
+  applianceUsage: ApplianceUsage[];
+  peak: PeakSummary | null;
+}
+
+export interface DailyTotal {
+  date: string;
+  weekday: string;
+  dayLabel: string;
+  kwh: number;
+  meteredKWh: number;
+  simulatedKWh: number;
+  costINR: number;
+  hasData: boolean;
+  isToday: boolean;
+  peakPeriod: DayPeriodKey | null;
+}
+
+export interface DailyTotalsResponse {
+  days: DailyTotal[];
+  averageKWh: number | null;
+  dailyTargetKWh: number | null;
+}
+
+// ── Simulated appliances ──────────────────────────────────────────────────────
+
+export interface SimApplianceLive {
+  applianceId: string;
+  name: string;
+  iconType: string | null;
+  roomId: string | null;
+  state: RelayState;
+  powerW: number;
+  /** auto = following the daily routine, manual = switched from the app, off = routine disabled */
+  mode: 'auto' | 'manual' | 'off';
+  simAuto: boolean;
+  overrideUntil: string | null;
+  nextChangeAt: string | null;
+  routine: string | null;
+  todayKWh: number;
+  ratedWatts: number | null;
+  quantity: number;
+}
+
+export interface SimStatus {
+  appliances: SimApplianceLive[];
+  totalPowerW: number;
+  voltageV: number | null;
+  serverTime: string | null;
+}
+
+export interface EnergyRecommendation {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  priority: 'high' | 'medium' | 'low';
+  evidence: string;
+}
+
+// ── WebSocket stream events ───────────────────────────────────────────────────
+
+export interface InitSnapshot {
+  serverTime: string;
+  deviceStatus: DeviceStatus;
+  latestTelemetry: LatestTelemetryResponse;
+  relayStatus: RelayStatus;
+  simStatus?: SimStatus;
+}
+
+export type StreamEvent =
+  | { type: 'init_snapshot'; data: InitSnapshot; sentAt: string }
+  | { type: 'telemetry'; data: TelemetryReading; sentAt: string }
+  | { type: 'sim_update'; data: SimStatus; sentAt: string }
+  | { type: 'device_status'; data: DeviceStatus; sentAt: string }
+  | { type: 'relay_state'; data: RelayStatus; sentAt: string }
+  | { type: 'relay_update'; data: RelayCommandDetail; sentAt: string }
+  | { type: 'heartbeat'; data: { serverTime: string; mqttConnected: boolean }; sentAt: string }
+  | { type: 'pong'; data: { serverTime: string }; sentAt: string }
+  | { type: 'ai_action'; data: AIActionEvent; sentAt: string }
+  | { type: 'ai_conflict'; data: { conflicts: Conflict[] }; sentAt: string }
+  | { type: 'ai_daily_insight'; data: DailyInsight; sentAt: string };

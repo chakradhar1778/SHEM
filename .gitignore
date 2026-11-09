@@ -1,0 +1,32 @@
+# Only the application code is tracked: backend/, frontend/, Main_Code/
+/*
+!/.gitignore
+!/backend/
+!/frontend/
+!/Main_Code/
+
+# Firmware credentials (template: Main_Code/secrets.example.h)
+Main_Code/secrets.h
+
+# Secrets / local env
+.env
+.env.*
+!.env.example
+
+# Databases and backups
+*.db
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Node / build output
+node_modules/
+dist/

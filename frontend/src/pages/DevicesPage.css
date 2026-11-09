@@ -1,0 +1,2098 @@
+/* ============================================================
+   SHEM — Devices / Appliance Catalogue Styles (Screen 3.png)
+   ============================================================ */
+
+.devices-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  animation: fadeIn 0.3s ease;
+  padding-bottom: 32px;
+}
+
+/* ---- Header Section ---- */
+.devices-header {
+  padding: 2px 2px 0 2px;
+}
+
+.devices-header__meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.devices-header__pretitle {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+  color: #7B99BA;
+  text-transform: uppercase;
+}
+
+.devices-header__back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-card-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-navy);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.devices-header__back-btn:hover {
+  background: #E2ECF7;
+}
+
+.devices-header__title {
+  font-family: var(--font-serif);
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--text-navy);
+  line-height: 1.15;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.devices-header__subtitle {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin: 4px 0 0 0;
+  line-height: 1.35;
+}
+
+.devices-header__divider {
+  width: 28px;
+  height: 2.5px;
+  background: var(--text-navy);
+  border-radius: var(--radius-pill);
+  margin: 10px 0 2px 0;
+}
+
+/* ---- Category Filter Pills ---- */
+.devices-categories-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px 6px 2px;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.devices-categories-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.devices-category-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(18, 36, 72, 0.04);
+  transition: all 0.2s ease;
+}
+
+.devices-category-chip:hover {
+  background: #F1F6FB;
+  color: var(--text-navy);
+}
+
+.devices-category-chip.active {
+  background: var(--text-navy);
+  color: #FFFFFF;
+  border-color: var(--text-navy);
+  box-shadow: 0 3px 8px rgba(18, 36, 72, 0.18);
+}
+
+/* ---- Hero Feature Section for Catalogue Detail ---- */
+.catalogue-detail-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+.catalogue-detail-hero__info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 220px;
+}
+
+.catalogue-detail-hero__category {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent-blue);
+}
+
+.catalogue-detail-hero__title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  color: var(--text-navy);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.catalogue-detail-hero__desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.35;
+}
+
+.catalogue-detail-hero__tile {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: #F8FAFD;
+  border: 1.5px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 12px rgba(18, 36, 72, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ---- Category Overview Grid (Screen 3.png) ---- */
+.devices-category-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.category-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.category-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(18, 36, 72, 0.08);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.category-card__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.category-card__icon-tile {
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  background: #F8FAFD;
+  border: 1px solid rgba(210, 226, 242, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(18, 36, 72, 0.03);
+}
+
+.category-card__content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.category-card__title {
+  font-family: var(--font-serif);
+  font-size: 16.5px;
+  font-weight: 500;
+  color: var(--text-navy);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.category-card__subtitle {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin: 2px 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.category-card__arrow {
+  color: #94A8C0;
+  font-size: 18px;
+  font-weight: 600;
+  padding-right: 4px;
+}
+
+/* ---- Appliance Catalogue List (Pastel Lighting UI) ---- */
+.catalogue-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.catalogue-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 14px 14px;
+  border: 1.5px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.catalogue-card:hover {
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.catalogue-card.selected {
+  border-color: var(--accent-blue);
+  background: #FAFDFE;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.12);
+}
+
+.catalogue-card__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.catalogue-card__tile {
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  background: #F8FAFD;
+  border: 1px solid rgba(210, 226, 242, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(18, 36, 72, 0.04);
+}
+
+.catalogue-card__info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.catalogue-card__title {
+  font-family: var(--font-serif);
+  font-size: 16.5px;
+  font-weight: 500;
+  color: var(--text-navy);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.catalogue-card__specs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+.catalogue-card__brand {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.catalogue-card__dot {
+  opacity: 0.5;
+}
+
+.catalogue-card__power {
+  font-weight: 600;
+  color: #2563EB;
+  background: rgba(37, 99, 235, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.catalogue-card__add-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--text-navy);
+  border: none;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.catalogue-card__add-btn:hover {
+  background: #1E3A66;
+  transform: scale(1.06);
+}
+
+.catalogue-card__add-btn.active {
+  background: #10B981;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+}
+
+/* ---- Selection Feedback Sheet / Card ---- */
+.catalogue-selection-feedback {
+  background: #F0FDF4;
+  border: 1.5px solid #BBF7D0;
+  border-radius: 18px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: fadeIn 0.25s ease;
+}
+
+.catalogue-selection-feedback__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.catalogue-selection-feedback__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #15803D;
+}
+
+.catalogue-selection-feedback__clear-btn {
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6B7280;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.catalogue-selection-feedback__item-name {
+  font-family: var(--font-serif);
+  font-size: 15.5px;
+  color: var(--text-navy);
+  margin: 0;
+}
+
+.catalogue-selection-feedback__notice {
+  font-size: 11px;
+  color: #166534;
+  margin: 0;
+  line-height: 1.35;
+}
+
+/* ---- Add Custom Appliance Banner ---- */
+.custom-appliance-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-card);
+  border-radius: var(--radius-pill);
+  padding: 8px 16px 8px 10px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.custom-appliance-banner:hover {
+  background: #F9FBFE;
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.custom-appliance-banner__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.custom-appliance-banner__plus-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent-blue);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+}
+
+.custom-appliance-banner__text {
+  display: flex;
+  flex-direction: column;
+}
+
+.custom-appliance-banner__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-blue);
+}
+
+.custom-appliance-banner__subtitle {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+}
+
+.custom-appliance-banner__arrow {
+  color: #94A8C0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* ---- "Your Appliances" Section & Inventory Cards (Phase 2D-B) ---- */
+.your-appliances-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.your-appliances-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.your-appliances-header__title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--text-navy);
+  margin: 0;
+}
+
+.your-appliances-header__count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-blue);
+  background: rgba(59, 130, 246, 0.1);
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+}
+
+/* Household Summary Card */
+.household-summary-card {
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.household-summary-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  text-align: center;
+}
+
+.household-stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #F8FAFD;
+  border-radius: 14px;
+  padding: 8px 6px;
+  border: 1px solid rgba(210, 226, 242, 0.5);
+}
+
+.household-stat-value {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-navy);
+  line-height: 1.1;
+}
+
+.household-stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.household-summary-disclaimer {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.35;
+  margin: 0;
+  padding-top: 2px;
+  border-top: 1px dashed rgba(210, 226, 242, 0.8);
+}
+
+/* Room Matrix Filter Bar */
+.room-matrix-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0 4px 0;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.room-matrix-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.room-matrix-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 5px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.room-matrix-chip:hover {
+  background: #EEF4FA;
+  color: var(--text-navy);
+}
+
+.room-matrix-chip.active {
+  background: var(--text-navy);
+  color: #FFFFFF;
+  border-color: var(--text-navy);
+}
+
+.room-matrix-badge {
+  background: rgba(18, 36, 72, 0.08);
+  color: var(--text-navy);
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.room-matrix-chip.active .room-matrix-badge {
+  background: rgba(255, 255, 255, 0.25);
+  color: #FFFFFF;
+}
+
+/* Inventory Cards List */
+.inventory-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.inventory-card {
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.inventory-card:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.inventory-card__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.inventory-card__info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.inventory-card__icon-tile {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #F8FAFD;
+  border: 1px solid rgba(210, 226, 242, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.inventory-card__details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.inventory-card__title {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-navy);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.inventory-card__tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+.inventory-card__room-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1E40AF;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+}
+
+.inventory-card__brand {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.inventory-card__delete-btn {
+  background: none;
+  border: none;
+  color: #94A8C0;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inventory-card__delete-btn:hover {
+  color: #DC2626;
+  background: #FEE2E2;
+}
+
+/* Inventory Card Bottom Row: Quantities & Load */
+.inventory-card__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid rgba(210, 226, 242, 0.5);
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inventory-card__loads {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.inventory-card__total-load {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2563EB;
+}
+
+.inventory-card__unit-load {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.inventory-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inventory-card__room-select {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-navy);
+  background: #F1F6FB;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 3px 8px;
+  cursor: pointer;
+  outline: none;
+}
+
+.inventory-stepper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #F1F6FB;
+  border-radius: var(--radius-pill);
+  padding: 2px 4px;
+  border: 1px solid var(--border-subtle);
+}
+
+.inventory-stepper__btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 1px solid rgba(210, 226, 242, 0.8);
+  color: var(--text-navy);
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.15s ease;
+}
+
+.inventory-stepper__btn:hover:not(:disabled) {
+  background: #E2ECF7;
+}
+
+.inventory-stepper__btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.inventory-stepper__value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-navy);
+  min-width: 18px;
+  text-align: center;
+}
+
+/* Empty State Cards */
+.your-appliances-empty-card {
+  background: var(--bg-card);
+  border-radius: 20px;
+  padding: 16px;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.your-appliances-empty-card__graphic {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  background: #EEF4FA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.your-appliances-empty-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.your-appliances-empty-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-navy);
+  margin: 0;
+}
+
+.your-appliances-empty-card__desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.35;
+}
+
+/* ============================================================
+   Room Assignment Modal Dialog (Phase 2D-B)
+   ============================================================ */
+.assignment-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 36, 72, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.assignment-modal {
+  background: #FFFFFF;
+  border-radius: 28px 28px 0 0;
+  padding: 22px 20px 28px 20px;
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 -8px 32px rgba(18, 36, 72, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.assignment-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.assignment-modal__title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  color: var(--text-navy);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.assignment-modal__subtitle {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  margin: 3px 0 0 0;
+}
+
+.assignment-modal__close-btn {
+  background: #F1F6FB;
+  border: 1px solid var(--border-subtle);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-size: 18px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.assignment-modal__close-btn:hover {
+  background: #E2ECF7;
+  color: var(--text-navy);
+}
+
+.assignment-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.assignment-modal__field-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.assignment-modal__room-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.assignment-room-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #F8FAFD;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-navy);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.assignment-room-chip:hover {
+  background: #EEF4FA;
+}
+
+.assignment-room-chip.active {
+  background: var(--text-navy);
+  color: #FFFFFF;
+  border-color: var(--text-navy);
+  box-shadow: 0 2px 6px rgba(18, 36, 72, 0.15);
+}
+
+.assignment-room-chip--add {
+  color: var(--accent-blue);
+  border-style: dashed;
+}
+
+/* Custom Room Inline Form */
+.assignment-custom-room-form {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.assignment-custom-room-input {
+  flex: 1;
+  background: #FFFFFF;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-size: 12.5px;
+  outline: none;
+  color: var(--text-navy);
+}
+
+.assignment-custom-room-input:focus {
+  border-color: var(--accent-blue);
+}
+
+.assignment-custom-room-btn {
+  background: var(--accent-blue);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius-pill);
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Quantity & Load Preview in Modal */
+.assignment-modal__qty-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #F8FAFD;
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  padding: 12px 14px;
+}
+
+.assignment-modal__calc-box {
+  display: flex;
+  flex-direction: column;
+}
+
+.assignment-modal__calc-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.assignment-modal__calc-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #2563EB;
+}
+
+.assignment-modal__stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.assignment-modal__stepper-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 1px solid rgba(210, 226, 242, 0.8);
+  color: var(--text-navy);
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.assignment-modal__stepper-btn:hover:not(:disabled) {
+  background: #E2ECF7;
+}
+
+.assignment-modal__stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.assignment-modal__stepper-val {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-navy);
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Modal Submit Button */
+.assignment-modal__submit-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(135deg, #122448 0%, #1E3A66 100%);
+  color: #FFFFFF;
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(18, 36, 72, 0.2);
+  transition: all 0.2s ease;
+}
+
+.assignment-modal__submit-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(18, 36, 72, 0.28);
+}
+
+/* Toast Message */
+.devices-toast {
+  background: #F0FDF4;
+  border: 1.5px solid #86EFAC;
+  color: #166534;
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.2s ease;
+}
+
+/* ============================================================
+   Phase 2D-C: Inventory Card Enhancements (Hours & Status Pills)
+   ============================================================ */
+.inventory-card__top-clickable {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.inventory-card__top-clickable:hover .inventory-card__title {
+  color: #2563EB;
+}
+
+.inventory-card__hours-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: #0369A1;
+  background: rgba(14, 165, 233, 0.12);
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+}
+
+.inventory-card__status-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.3px;
+}
+
+.inventory-card__status-pill--on {
+  color: #15803D;
+  background: #DCFCE7;
+  border: 1px solid rgba(134, 239, 172, 0.8);
+}
+
+.inventory-card__status-pill--off {
+  color: #64748B;
+  background: #F1F5F9;
+  border: 1px solid rgba(203, 213, 225, 0.8);
+}
+
+.inventory-card__chevron {
+  color: #94A8C0;
+  margin-left: 2px;
+  align-self: center;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.inventory-card__top-clickable:hover .inventory-card__chevron {
+  transform: translateX(2px);
+  color: #2563EB;
+}
+
+/* ============================================================
+   Phase 2D-C: Appliance Detail Bottom Sheet / Modal
+   ============================================================ */
+.detail-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 36, 72, 0.5);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.detail-modal {
+  width: 100%;
+  max-width: 440px;
+  background: #FFFFFF;
+  border-radius: 28px 28px 0 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 -12px 36px rgba(18, 36, 72, 0.25);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px 20px 28px 20px;
+  gap: 16px;
+  animation: slideUpDetail 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-overflow-scrolling: touch;
+}
+
+@keyframes slideUpDetail {
+  from {
+    transform: translateY(100%);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Modal Header */
+.detail-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-modal__title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.detail-modal__icon-tile {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  background: #F8FAFD;
+  border: 1px solid rgba(210, 226, 242, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.detail-modal__category-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #2563EB;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+}
+
+.detail-modal__title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-navy);
+  margin: 1px 0 3px 0;
+  line-height: 1.2;
+}
+
+.detail-modal__meta-tags {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.detail-modal__room-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1E40AF;
+  background: rgba(59, 130, 246, 0.1);
+  padding: 1.5px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.detail-modal__brand-tag {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.detail-modal__close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #F1F5F9;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 22px;
+  font-weight: 400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.detail-modal__close-btn:hover {
+  background: #E2E8F0;
+  color: var(--text-navy);
+}
+
+/* 3-Column Specifications Grid */
+.detail-modal__specs-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.detail-modal__spec-box {
+  background: #F8FAFD;
+  border: 1px solid rgba(210, 226, 242, 0.6);
+  border-radius: 14px;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.detail-modal__spec-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.detail-modal__spec-val {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-navy);
+  margin-top: 2px;
+  line-height: 1.1;
+}
+
+.detail-modal__spec-hint {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* Simulated Status Card */
+.detail-modal__sim-status-card {
+  background: #F8FAFD;
+  border: 1px solid rgba(210, 226, 242, 0.8);
+  border-radius: 18px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detail-modal__sim-status-left {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.detail-modal__sim-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sim-status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sim-status-indicator.active {
+  background: #16A34A;
+  box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
+}
+
+.sim-status-indicator.paused {
+  background: #94A3B8;
+}
+
+.sim-status-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-navy);
+}
+
+.detail-modal__sim-status-desc {
+  font-size: 10px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* Toggle Switch Button */
+.detail-modal__toggle-btn {
+  display: flex;
+  align-items: center;
+  width: 72px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  border: none;
+  padding: 3px;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.detail-modal__toggle-btn.on {
+  background: #16A34A;
+}
+
+.detail-modal__toggle-btn.off {
+  background: #CBD5E1;
+}
+
+.detail-modal__toggle-thumb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.detail-modal__toggle-btn.on .detail-modal__toggle-thumb {
+  transform: translateX(40px);
+}
+
+.detail-modal__toggle-btn.off .detail-modal__toggle-thumb {
+  transform: translateX(0);
+}
+
+.detail-modal__toggle-text {
+  position: absolute;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.detail-modal__toggle-btn.on .detail-modal__toggle-text {
+  left: 9px;
+  color: #FFFFFF;
+}
+
+.detail-modal__toggle-btn.off .detail-modal__toggle-text {
+  right: 9px;
+  color: #475569;
+}
+
+/* Operating Hours Card */
+.detail-modal__hours-card {
+  background: #FFFFFF;
+  border: 1px solid rgba(210, 226, 242, 0.8);
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-modal__hours-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.detail-modal__section-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-navy);
+}
+
+.detail-modal__hours-subtitle {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+.detail-modal__hours-controls {
+  display: flex;
+  justify-content: center;
+}
+
+.detail-modal__stepper {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.detail-modal__stepper-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  border: 1px solid rgba(210, 226, 242, 0.9);
+  color: var(--text-navy);
+  font-size: 18px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 4px rgba(18, 36, 72, 0.06);
+}
+
+.detail-modal__stepper-btn:hover:not(:disabled) {
+  background: #F1F5F9;
+}
+
+.detail-modal__stepper-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.detail-modal__hours-display {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  background: #F8FAFD;
+  border: 1px solid rgba(210, 226, 242, 0.8);
+  border-radius: 12px;
+  padding: 4px 14px;
+}
+
+.detail-modal__hours-input {
+  width: 52px;
+  text-align: center;
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-navy);
+  border: none;
+  background: transparent;
+  outline: none;
+}
+
+.detail-modal__hours-unit {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Calculated Energy Estimates Card */
+.detail-modal__energy-card {
+  background: linear-gradient(180deg, #F0F7FF 0%, #E8F2FD 100%);
+  border: 1px solid rgba(186, 218, 250, 0.8);
+  border-radius: 18px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-modal__energy-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.detail-modal__energy-formula {
+  font-family: monospace;
+  font-size: 9.5px;
+  color: #0369A1;
+  background: rgba(255, 255, 255, 0.7);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.detail-modal__energy-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.detail-modal__energy-stat-box {
+  background: #FFFFFF;
+  border-radius: 14px;
+  padding: 10px 12px;
+  border: 1px solid rgba(186, 218, 250, 0.7);
+  display: flex;
+  flex-direction: column;
+}
+
+.energy-stat-value {
+  font-family: var(--font-serif);
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-navy);
+  line-height: 1.1;
+}
+
+.energy-stat-unit {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: #0369A1;
+}
+
+.energy-stat-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-top: 3px;
+}
+
+.energy-stat-sublabel {
+  font-size: 9px;
+  color: #64748B;
+  margin-top: 2px;
+}
+
+/* Mandatory Disclaimer */
+.detail-modal__mandatory-disclaimer {
+  font-size: 10px;
+  color: #64748B;
+  line-height: 1.35;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin: 0;
+  border: 1px dashed rgba(186, 218, 250, 0.7);
+}
+
+/* Enhanced Appliance Details Modal (Phase 3D-A — Group 14.png) */
+.detail-modal__header-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  position: relative;
+  padding-bottom: 4px;
+}
+
+.detail-modal__header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.detail-modal__back-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #F1F5F9;
+  border: none;
+  color: #122448;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  align-self: flex-start;
+}
+
+.detail-modal__back-btn:hover {
+  background: #E2E8F0;
+}
+
+.detail-modal__subtitle {
+  font-size: 13px;
+  color: #64748B;
+  margin: 4px 0 0;
+  line-height: 1.45;
+}
+
+.detail-modal__cottage-art {
+  flex-shrink: 0;
+  margin-top: -6px;
+  margin-right: -4px;
+}
+
+/* Selected Appliance Preview Tile */
+.detail-modal__appliance-tile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #F8FAFD;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+.detail-modal__tile-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: #FFFFFF;
+  border: 1px solid #CBD5E1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.detail-modal__tile-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-modal__tile-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  color: #3B82F6;
+}
+
+.detail-modal__tile-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #122448;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-modal__tile-cat {
+  font-size: 11px;
+  color: #64748B;
+}
+
+.detail-modal__tile-badge {
+  flex-shrink: 0;
+}
+
+.room-icon-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1E40AF;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+/* Validation Alert */
+.detail-modal__alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #DC2626;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+/* Form & 2-Column Fields Grid */
+.detail-modal__form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-modal__field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.detail-modal__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-modal__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #122448;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.label-opt {
+  font-size: 11px;
+  font-weight: 400;
+  color: #94A3B8;
+}
+
+.detail-modal__input {
+  width: 100%;
+  padding: 10px 12px;
+  background: #FFFFFF;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: #122448;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-sizing: border-box;
+}
+
+.detail-modal__input:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.detail-modal__input--disabled {
+  background: #F8FAFD;
+  color: #64748B;
+  cursor: not-allowed;
+  border-color: #E2E8F0;
+}
+
+/* Quantity Stepper */
+.detail-modal__qty-stepper {
+  display: flex;
+  align-items: center;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 12px;
+  background: #FFFFFF;
+  overflow: hidden;
+}
+
+.qty-btn {
+  width: 38px;
+  height: 38px;
+  background: none;
+  border: none;
+  color: #122448;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s;
+}
+
+.qty-btn:hover:not(:disabled) {
+  background: #F1F5F9;
+}
+
+.qty-btn:disabled {
+  color: #CBD5E1;
+  cursor: not-allowed;
+}
+
+.qty-input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: #122448;
+  background: transparent;
+  padding: 0;
+}
+
+.qty-input:focus {
+  outline: none;
+}
+
+/* Location / Room Select */
+.detail-modal__select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.detail-modal__select {
+  width: 100%;
+  padding: 10px 28px 10px 12px;
+  background: #FFFFFF;
+  border: 1.5px solid #E2E8F0;
+  border-radius: 12px;
+  font-family: inherit;
+  font-size: 13px;
+  color: #122448;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.detail-modal__select:focus {
+  outline: none;
+  border-color: #3B82F6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.select-arrow {
+  position: absolute;
+  right: 10px;
+  pointer-events: none;
+  color: #64748B;
+  font-size: 11px;
+}
+
+/* Essential? Segmented Pills */
+.detail-modal__pill-group {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: #F1F5F9;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.essential-pill {
+  padding: 8px 4px;
+  background: transparent;
+  border: none;
+  border-radius: 9px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.essential-pill:hover {
+  color: #122448;
+}
+
+.essential-pill.active {
+  background: #FFFFFF;
+  color: #1D4ED8;
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(18, 36, 72, 0.12);
+}
+
+/* Runtime & Estimates Section */
+.detail-modal__runtime-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.detail-modal__sim-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #FFFFFF;
+  border-radius: 12px;
+  border: 1px solid rgba(186, 218, 250, 0.7);
+  margin-top: 4px;
+}
+
+.detail-modal__sim-status-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sim-status-title {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #1E3A8A;
+}
+
+/* "Why this helps" Card (Group 14.png) */
+.detail-modal__why-helps-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+
+.why-helps__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(37, 99, 235, 0.15);
+}
+
+.why-helps__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.why-helps__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1E3A8A;
+  margin: 0;
+}
+
+.why-helps__desc {
+  font-size: 12px;
+  color: #3B82F6;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Modal Action Buttons */
+.detail-modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.detail-modal__save-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  background: #122448;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 9999px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(18, 36, 72, 0.25);
+  transition: all 0.2s ease;
+}
+
+.detail-modal__save-btn:hover {
+  background: #1E3A8A;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(18, 36, 72, 0.32);
+}
+
+.detail-modal__save-btn.saved {
+  background: #10B981;
+}
+
+.detail-modal__cancel-btn {
+  background: none;
+  border: none;
+  color: #3B82F6;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px;
+  text-align: center;
+  transition: opacity 0.15s;
+}
+
+.detail-modal__cancel-btn:hover {
+  opacity: 0.8;
+}
+
+
+

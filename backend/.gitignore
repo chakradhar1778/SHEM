@@ -1,0 +1,22 @@
+# Secrets
+.env
+
+# Databases (live data + backups)
+*.db
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+.mypy_cache/
+
+# Superseded tests that talked to the real broker / database
+_legacy_unsafe_tests/

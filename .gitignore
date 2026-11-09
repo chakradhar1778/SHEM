@@ -6,6 +6,7 @@
 !/frontend/
 !/Main_Code/
 !/start.py
+!/SETUP.md
 
 # Firmware credentials (template: Main_Code/secrets.example.h)
 Main_Code/secrets.h

@@ -1,21 +1,25 @@
 """
 SHEM Backend — Bill document storage (images / PDFs kept for viewing; never parsed, no OCR)
 
-Files live under UPLOADS_DIR/bills/<bill-id>.<ext>. The type is decided from the
-file's own bytes (magic number) and must match the declared Content-Type, so a
-renamed script can't be stored as a "PDF". Names on disk come from the bill id
-(sanitised), never from user input.
+Documents are stored in the database (bill_document_chunks), so they live in
+Turso and survive restarts on hosts with an ephemeral disk (Render free tier).
+Documents uploaded by older versions under UPLOADS_DIR/bills/ are still served
+and cleaned up. The type is decided from the file's own bytes (magic number)
+and must match the declared Content-Type, so a renamed script can't be stored
+as a "PDF".
 """
 
 from __future__ import annotations
 
-import hashlib
-import os
-import re
 from pathlib import Path
 from typing import Optional, Tuple
 
+from sqlalchemy import delete as sa_delete
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.config import get_settings
+from app.models.db_models import BillDocumentChunk, ElectricityBill
 
 settings = get_settings()
 
@@ -45,15 +49,6 @@ def sniff(data: bytes) -> Optional[str]:
     return None
 
 
-def root() -> Path:
-    return Path(settings.uploads_dir).resolve() / "bills"
-
-
-def _safe_stem(bill_id: str) -> str:
-    stem = re.sub(r"[^A-Za-z0-9_-]", "", bill_id)[:64]
-    return stem if stem == bill_id and stem else "bill-" + hashlib.sha256(bill_id.encode()).hexdigest()[:24]
-
-
 def validate(data: bytes, declared: str) -> str:
     """Returns the verified content type or raises DocumentError."""
     if not data:
@@ -72,19 +67,52 @@ def validate(data: bytes, declared: str) -> str:
     return actual
 
 
-def save(bill_id: str, data: bytes, content_type: str, previous: Optional[str] = None) -> Tuple[str, int]:
-    """Write atomically; returns (relative path, size). Removes a previous file with another extension."""
-    folder = root()
-    folder.mkdir(parents=True, exist_ok=True)
-    name = _safe_stem(bill_id) + ALLOWED[content_type]
-    target = folder / name
-    tmp = folder / (name + ".tmp")
-    with open(tmp, "wb") as fh:
-        fh.write(data)
-    os.replace(tmp, target)
-    if previous and previous != f"bills/{name}":
-        delete(previous)
-    return f"bills/{name}", len(data)
+DB_MARKER = "db"                 # ElectricityBill.document_path value for documents stored in the DB
+CHUNK_SIZE = 256 * 1024          # bytes per row; keeps each libSQL/Turso request small
+
+
+def save(db: Session, bill_id: str, data: bytes, previous: Optional[str] = None) -> Tuple[str, int]:
+    """
+    Store the document in bill_document_chunks (replacing any earlier one) and
+    remove a legacy on-disk file. Returns (document_path marker, size). The
+    caller commits, so bytes and bill metadata land in the same transaction.
+    """
+    _delete_chunks(db, bill_id)
+    for seq, start in enumerate(range(0, len(data), CHUNK_SIZE)):
+        db.add(BillDocumentChunk(bill_id=bill_id, seq=seq, data=data[start:start + CHUNK_SIZE]))
+    delete_legacy_file(previous)
+    return DB_MARKER, len(data)
+
+
+def load(db: Session, bill: ElectricityBill) -> Optional[bytes]:
+    """The document bytes, from the DB or (older uploads) from UPLOADS_DIR; None if gone."""
+    if not bill.document_path:
+        return None
+    if bill.document_path == DB_MARKER:
+        rows = db.execute(
+            select(BillDocumentChunk.data)
+            .where(BillDocumentChunk.bill_id == bill.id)
+            .order_by(BillDocumentChunk.seq)
+        ).scalars().all()
+        return b"".join(bytes(r) for r in rows) if rows else None
+    path = resolve(bill.document_path)
+    return path.read_bytes() if path is not None else None
+
+
+def delete(db: Session, bill_id: str, document_path: Optional[str]) -> None:
+    """Remove a bill's document wherever it lives (caller commits)."""
+    _delete_chunks(db, bill_id)
+    delete_legacy_file(document_path)
+
+
+def _delete_chunks(db: Session, bill_id: str) -> None:
+    db.execute(sa_delete(BillDocumentChunk).where(BillDocumentChunk.bill_id == bill_id))
+
+
+# ── Legacy on-disk documents (uploaded before DB storage) ─────────────────────
+
+def root() -> Path:
+    return Path(settings.uploads_dir).resolve() / "bills"
 
 
 def resolve(rel_path: str) -> Optional[Path]:
@@ -96,8 +124,8 @@ def resolve(rel_path: str) -> Optional[Path]:
     return p
 
 
-def delete(rel_path: Optional[str]) -> None:
-    if not rel_path:
+def delete_legacy_file(rel_path: Optional[str]) -> None:
+    if not rel_path or rel_path == DB_MARKER:
         return
     p = resolve(rel_path)
     if p is not None:

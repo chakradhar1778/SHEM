@@ -17,6 +17,36 @@ logger = logging.getLogger(__name__)
 
 settings = get_settings()
 
+def build_turso_url(raw_url: str, token: str) -> tuple[str, dict[str, object]]:
+    """
+    Normalise a Turso URL for sqlalchemy-libsql. Returns (url, connect_args).
+
+    Accepts libsql://<db>-<org>.turso.io, https://..., sqlite+libsql://... or a
+    bare host. The auth token must go ONLY in connect_args["auth_token"]: the
+    dialect copies URL query params into the HTTP URL it hands to libsql, which
+    then requests "/v3/pipeline?authToken=..." and Turso answers 404
+    "route not found". A token pasted into the URL is moved to connect_args.
+    """
+    from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
+
+    url = raw_url.strip()
+    for prefix in ("sqlite+libsql://", "libsql://", "https://", "wss://", "http://", "ws://"):
+        if url.startswith(prefix):
+            url = url.removeprefix(prefix)
+            break
+    parts = urlsplit("sqlite+libsql://" + url)
+    query: dict[str, str] = {}
+    for key, value in parse_qsl(parts.query):
+        if key.lower() in ("authtoken", "auth_token"):
+            token = token or value
+        else:
+            query[key] = value
+    query.setdefault("secure", "true")
+
+    clean = urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), ""))
+    return clean, ({"auth_token": token} if token else {})
+
+
 def _resolve_engine() -> tuple[object, bool]:
     """
     Returns (engine, is_turso).
@@ -30,29 +60,8 @@ def _resolve_engine() -> tuple[object, bool]:
         turso_url = db_url
 
     if turso_url:
-        # Turso / libSQL URL normalization
-        # Accepts: libsql://[db-name]-[org].turso.io, https://..., or sqlite+libsql://...
-        url = turso_url
-        if url.startswith("libsql://"):
-            url = "sqlite+" + url
-        elif url.startswith("https://"):
-            url = "sqlite+libsql://" + url.removeprefix("https://")
-        elif not url.startswith("sqlite+libsql://"):
-            url = f"sqlite+libsql://{url}"
-
-        connect_args: dict[str, object] = {}
-        if turso_token:
-            connect_args["auth_token"] = turso_token
-            if "authToken=" not in url:
-                delimiter = "&" if "?" in url else "?"
-                url = f"{url}{delimiter}authToken={turso_token}"
-
-        if "secure=" not in url:
-            delimiter = "&" if "?" in url else "?"
-            url = f"{url}{delimiter}secure=true"
-
-        sanitized_url = url.split("authToken=")[0].rstrip("&?")
-        logger.info("Connecting to Turso / libSQL: %s", sanitized_url)
+        url, connect_args = build_turso_url(turso_url, turso_token)
+        logger.info("Connecting to Turso / libSQL: %s", url)
         return (
             create_engine(
                 url,

@@ -7,9 +7,9 @@ from __future__ import annotations
 import logging
 import uuid
 from typing import List
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
-from fastapi.responses import FileResponse
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
@@ -76,10 +76,9 @@ def delete_bill(bill_id: str, db: Session = Depends(get_db)) -> Response:
     bill = db.get(ElectricityBill, bill_id)
     if bill is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Bill not found.")
-    path = bill.document_path
+    document_store.delete(db, bill.id, bill.document_path)
     db.delete(bill)
     db.commit()
-    document_store.delete(path)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
@@ -156,7 +155,7 @@ async def upload_bill_document(
         ctype = document_store.validate(data, request.headers.get("content-type", ""))
     except document_store.DocumentError as exc:
         raise HTTPException(exc.status, str(exc)) from exc
-    rel, size = document_store.save(bill.id, data, ctype, previous=bill.document_path)
+    rel, size = document_store.save(db, bill.id, data, previous=bill.document_path)
     bill.document_path, bill.document_content_type, bill.document_size = rel, ctype, size
     bill.document_uploaded_at = utcnow()
     if filename:
@@ -167,21 +166,24 @@ async def upload_bill_document(
 
 
 @router.get("/bills/{bill_id}/document", tags=["Bills"])
-def get_bill_document(bill_id: str, db: Session = Depends(get_db)) -> FileResponse:
+def get_bill_document(bill_id: str, db: Session = Depends(get_db)) -> Response:
     bill = _bill_or_404(db, bill_id)
-    path = document_store.resolve(bill.document_path) if bill.document_path else None
-    if path is None:
+    data = document_store.load(db, bill)
+    if data is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No document stored for this bill.")
-    name = bill.document_filename or f"bill-{bill.id}{path.suffix}"
-    return FileResponse(path, media_type=bill.document_content_type or "application/octet-stream",
-                        filename=name, content_disposition_type="inline",
-                        headers={"X-Content-Type-Options": "nosniff", "Cache-Control": "private, no-store"})
+    ctype = bill.document_content_type or "application/octet-stream"
+    name = bill.document_filename or f"bill-{bill.id}{document_store.ALLOWED.get(ctype, '')}"
+    return Response(content=data, media_type=ctype, headers={
+        "Content-Disposition": f"inline; filename*=utf-8''{quote(name)}",
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "private, no-store",
+    })
 
 
 @router.delete("/bills/{bill_id}/document", response_model=ElectricityBillSchema, tags=["Bills"])
 def delete_bill_document(bill_id: str, db: Session = Depends(get_db)) -> ElectricityBillSchema:
     bill = _bill_or_404(db, bill_id)
-    document_store.delete(bill.document_path)
+    document_store.delete(db, bill.id, bill.document_path)
     bill.document_path = bill.document_content_type = bill.document_size = bill.document_uploaded_at = None
     db.commit()
     db.refresh(bill)

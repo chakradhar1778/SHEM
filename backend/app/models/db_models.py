@@ -26,6 +26,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     TypeDecorator,
@@ -313,7 +314,8 @@ class ElectricityBill(Base):
     bill_amount_inr: Mapped[float] = mapped_column(Float)
     location_tag: Mapped[Optional[str]] = mapped_column(String(128))
     # Stored bill document (image/PDF) — kept for viewing only, never parsed.
-    document_path: Mapped[Optional[str]] = mapped_column(String(255))        # relative to UPLOADS_DIR
+    # "db" = bytes in bill_document_chunks; anything else = legacy file path relative to UPLOADS_DIR
+    document_path: Mapped[Optional[str]] = mapped_column(String(255))
     document_content_type: Mapped[Optional[str]] = mapped_column(String(64))
     document_size: Mapped[Optional[int]] = mapped_column(Integer)
     document_uploaded_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
@@ -329,6 +331,29 @@ class ElectricityBill(Base):
     @property
     def has_document(self) -> bool:
         return bool(self.document_path)
+
+
+class RawBlob(LargeBinary):
+    """BLOB bound as plain bytes: LargeBinary would wrap values in the driver's
+    dbapi.Binary, which libsql_experimental (Turso) may not provide."""
+    cache_ok = True
+
+    def bind_processor(self, dialect):
+        return lambda value: bytes(value) if value is not None else None
+
+
+class BillDocumentChunk(Base):
+    """
+    Bill document bytes, stored in the database (Turso) so they survive
+    container restarts on hosts without a persistent disk. Split into chunks to
+    keep every libSQL request small; kept out of electricity_bills so listing
+    bills never loads the files.
+    """
+    __tablename__ = "bill_document_chunks"
+
+    bill_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True)
+    data: Mapped[bytes] = mapped_column(RawBlob, nullable=False)
 
 
 class EnergyTarget(Base):

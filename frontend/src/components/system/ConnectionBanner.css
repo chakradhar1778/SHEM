@@ -7,6 +7,11 @@
   border-radius: 12px;
   font-size: 12.5px;
   line-height: 1.35;
+  /* .mobile-main is pulled up under the top bar (negative margin-top), so its
+     transparent padding covered this banner and swallowed taps on the action.
+     Stack the banner above page content, below the top bar (z-index 80). */
+  position: relative;
+  z-index: 70;
 }
 
 .conn-banner--error {
@@ -43,7 +48,10 @@
   font-weight: 700;
   text-decoration: underline;
   cursor: pointer;
-  padding: 0;
+  /* bigger touch target without changing the layout */
+  padding: 8px 6px;
+  margin: -8px -6px;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .conn-banner__actions {

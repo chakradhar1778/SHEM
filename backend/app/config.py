@@ -33,12 +33,16 @@ class Settings(BaseSettings):
     mqtt_username: str = "shem_backend"
     mqtt_password: str = ""
     mqtt_ca_cert_path: str = "./certs/emqxsl-ca.crt"
+    mqtt_ca_cert_content: str = ""
 
     # ── Device ─────────────────────────────────────────────────
     device_id: str = "001"
 
     # ── Database ───────────────────────────────────────────────
     sqlite_path: str = "./shem.db"
+    turso_database_url: str = ""
+    turso_auth_token: str = ""
+    database_url: str = ""
 
     # ── API Security ───────────────────────────────────────────
     api_key: str = ""
@@ -148,9 +152,10 @@ class Settings(BaseSettings):
     max_bill_document_mb: float = 10.0
 
     # ── Server ─────────────────────────────────────────────────
-    host: str = "127.0.0.1"
+    host: str = "0.0.0.0"
     port: int = 8000
     dev_reload: bool = False
+    forwarded_allow_ips: str = "*"
 
     # ── App Meta ───────────────────────────────────────────────
     app_name: str = "SHEM Backend"

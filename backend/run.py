@@ -16,7 +16,7 @@ if __name__ == "__main__":
         host=settings.host,
         port=settings.port,
         reload=settings.dev_reload,
-        proxy_headers=True,                 # honour X-Forwarded-Proto from cloudflared
-        forwarded_allow_ips="127.0.0.1",
+        proxy_headers=True,                 # honour X-Forwarded-Proto / X-Forwarded-For from proxies (Railway, Cloudflare)
+        forwarded_allow_ips=settings.forwarded_allow_ips,
         log_level="info",
     )

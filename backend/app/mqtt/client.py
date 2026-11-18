@@ -180,11 +180,28 @@ class MQTTClientManager:
 
     def _configure_tls(self, client: paho.Client) -> None:
         ca_path = os.path.abspath(settings.mqtt_ca_cert_path)
+
+        # If cert file does not exist, but raw content was provided via MQTT_CA_CERT_CONTENT, write it out
+        if not os.path.isfile(ca_path) and settings.mqtt_ca_cert_content.strip():
+            try:
+                os.makedirs(os.path.dirname(ca_path), exist_ok=True)
+                with open(ca_path, "w", encoding="utf-8") as f:
+                    f.write(settings.mqtt_ca_cert_content.strip() + "\n")
+                logger.info("Wrote MQTT CA certificate from env var to %s", ca_path)
+            except Exception as exc:
+                logger.warning("Failed writing MQTT CA certificate to %s: %s", ca_path, exc)
+
+        # In container environments, check standard container mount if default relative path was kept
+        if not os.path.isfile(ca_path) and settings.mqtt_ca_cert_path in ("./certs/emqxsl-ca.crt", "certs/emqxsl-ca.crt"):
+            container_path = "/app/certs/emqxsl-ca.crt"
+            if os.path.isfile(container_path):
+                ca_path = container_path
+
         if not os.path.isfile(ca_path):
             # Do not crash the API: start() will report MQTT as disabled.
             self._tls_error = (
                 f"MQTT CA certificate not found at {ca_path}. Download it from the "
-                "EMQX Cloud deployment page and set MQTT_CA_CERT_PATH."
+                "EMQX Cloud deployment page and set MQTT_CA_CERT_PATH or MQTT_CA_CERT_CONTENT."
             )
             return
         client.tls_set(

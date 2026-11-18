@@ -67,7 +67,9 @@ def broadcast_mqtt_state(connected: bool) -> None:
     """MQTTClientManager.on_state_change hook: push broker up/down to clients at once."""
     try:
         _broadcast_device_status(mqtt_connected=connected)
-    except Exception:
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except BaseException:  # incl. libSQL PanicException — never kill Paho's thread
         logger.exception("Could not broadcast MQTT state change")
 
 

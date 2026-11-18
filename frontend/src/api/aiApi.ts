@@ -1,4 +1,4 @@
-import { ApiError, apiRequest, getConnection } from './backendApi';
+import { AUTH_ERROR_MESSAGE, ApiError, apiRequest, getConnection } from './backendApi';
 import type {
   AIActionLogEntry,
   AIStatus,
@@ -89,7 +89,7 @@ export async function streamChat(
     } catch {
       /* not JSON */
     }
-    if (response.status === 401) detail = 'The backend rejected the API key. Set it in Settings → Backend connection.';
+    if (response.status === 401) detail = AUTH_ERROR_MESSAGE;
     if (response.status === 429) detail = 'You are sending messages too quickly — wait a moment.';
     throw new ApiError(response.status, detail || `SHEM AI request failed (${response.status})`);
   }

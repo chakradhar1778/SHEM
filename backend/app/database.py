@@ -9,6 +9,7 @@ import logging
 from typing import Generator
 
 from sqlalchemy import create_engine, event, text
+from sqlalchemy.pool import QueuePool
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.config import get_settings
@@ -47,6 +48,67 @@ def build_turso_url(raw_url: str, token: str) -> tuple[str, dict[str, object]]:
     return clean, ({"auth_token": token} if token else {})
 
 
+# Errors after which a libSQL connection must not be reused (Hrana stream gone,
+# server-side rollback, or the Rust driver panicking on a dead connection).
+_TURSO_BROKEN_MARKERS = (
+    "stream error",
+    "stream was idle",
+    "stream not found",
+    "no transaction is active",
+    "connection already",
+    "unwrap()",
+    "baton",
+)
+
+
+def _is_broken_turso_error(exc: BaseException) -> bool:
+    text_ = str(exc).lower()
+    return type(exc).__name__ == "PanicException" or any(m in text_ for m in _TURSO_BROKEN_MARKERS)
+
+
+def _harden_turso_engine(eng) -> None:
+    """
+    * ROLLBACK when the server already ended the transaction (idle-stream
+      timeout) raises "cannot rollback - no transaction is active". Treat the
+      rollback as done (so the original error surfaces, not this one) and mark
+      the connection; the pool replaces it at its next checkout.
+    * Any stream/driver failure during a statement invalidates the connection
+      at once, so the next request gets a fresh one.
+    """
+    from sqlalchemy import exc as sa_exc
+
+    broken: set[int] = set()          # id() of DBAPI connections known to be dead
+    original_rollback = eng.dialect.do_rollback
+
+    def do_rollback(dbapi_connection):
+        try:
+            original_rollback(dbapi_connection)
+        except BaseException as exc:  # pyo3 PanicException derives from BaseException
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)) or not _is_broken_turso_error(exc):
+                raise
+            # SQLAlchemy may pass a pool proxy here; key on the raw DBAPI connection.
+            broken.add(id(getattr(dbapi_connection, "dbapi_connection", dbapi_connection)))
+            logger.warning("Turso rollback skipped (%s); connection will be replaced", exc)
+
+    eng.dialect.do_rollback = do_rollback
+
+    @event.listens_for(eng, "checkout")
+    def _replace_broken(dbapi_connection, connection_record, connection_proxy):
+        if id(dbapi_connection) in broken:
+            broken.discard(id(dbapi_connection))
+            # Documented pool hook: discards this connection and retries with a new one.
+            raise sa_exc.DisconnectionError("Turso connection was left broken; reconnecting")
+
+    @event.listens_for(eng, "close")
+    def _forget_closed(dbapi_connection, connection_record):
+        broken.discard(id(dbapi_connection))
+
+    @event.listens_for(eng, "handle_error")
+    def _invalidate_broken(ctx):
+        if _is_broken_turso_error(ctx.original_exception):
+            ctx.is_disconnect = True
+
+
 def _resolve_engine() -> tuple[object, bool]:
     """
     Returns (engine, is_turso).
@@ -62,14 +124,26 @@ def _resolve_engine() -> tuple[object, bool]:
     if turso_url:
         url, connect_args = build_turso_url(turso_url, turso_token)
         logger.info("Connecting to Turso / libSQL: %s", url)
-        return (
-            create_engine(
-                url,
-                connect_args=connect_args,
-                echo=False,
-            ),
-            True,
+        turso_engine = create_engine(
+            url,
+            # The pysqlite dialect treats a URL without a file path as ":memory:"
+            # and picks SingletonThreadPool: one connection per thread, shared by
+            # every session on that thread, and closed under other threads once
+            # more than 5 threads exist. On Turso that caused "detached
+            # connection fairy" errors, Rust panics on closed connections and
+            # transactions cut short by another session's COMMIT/ROLLBACK.
+            # A QueuePool hands each session its own connection (libsql
+            # connections are Send + Sync; check_same_thread is not enforced).
+            poolclass=QueuePool,
+            pool_size=5,
+            max_overflow=10,
+            pool_timeout=30,
+            pool_recycle=300,           # refresh long-lived Hrana streams
+            connect_args={**connect_args, "check_same_thread": False},
+            echo=False,
         )
+        _harden_turso_engine(turso_engine)
+        return turso_engine, True
 
     # Standard SQLite
     logger.info("Connecting to SQLite: %s", settings.sqlite_url)

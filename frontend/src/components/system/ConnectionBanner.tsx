@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom';
+import { isAuthErrorMessage } from '../../api/backendApi';
 import { useLiveData } from '../../hooks/useLiveData';
 import { useHomeConfig } from '../../hooks/useHomeConfig';
 import { useInventory } from '../../hooks/useInventory';
@@ -22,15 +23,23 @@ export function ConnectionBanner() {
   let tone: 'error' | 'warn' | null = null;
   let text = '';
   let action: React.ReactNode = null;
+  const settingsLink = <NavLink to="/settings" className="conn-banner__action">Fix in Settings</NavLink>;
 
-  if (streamStatus === 'unauthorized') {
+  // A missing / wrong API key can surface first through the data requests
+  // (before the live stream has been diagnosed), so check both.
+  if (streamStatus === 'unauthorized' || isAuthErrorMessage(saveError)) {
     tone = 'error';
     text = 'Backend rejected the API key.';
-    action = <NavLink to="/settings" className="conn-banner__action">Fix in Settings</NavLink>;
+    action = settingsLink;
   } else if (streamStatus === 'unreachable') {
     tone = 'error';
     text = 'Cannot reach the SHEM backend.';
-    action = <button type="button" className="conn-banner__action" onClick={reconnect}>Retry</button>;
+    action = (
+      <span className="conn-banner__actions">
+        <button type="button" className="conn-banner__action" onClick={reconnect}>Retry</button>
+        {settingsLink}
+      </span>
+    );
   } else if (saveError) {
     tone = 'error';
     text = saveError;

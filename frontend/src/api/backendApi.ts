@@ -91,8 +91,16 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
+/** Shown for every 401; the connection banner looks for it to offer a link to Settings. */
+export const AUTH_ERROR_MESSAGE = 'The backend rejected the API key. Set it in Settings → Backend connection.';
+
+/** True for messages caused by a missing / wrong API key (also when prefixed, e.g. "Could not save …: <msg>"). */
+export function isAuthErrorMessage(message: string | null | undefined): boolean {
+  return !!message && message.includes(AUTH_ERROR_MESSAGE);
+}
+
 function describeFailure(status: number, detail: unknown, fallback: string): string {
-  if (status === 401) return 'The backend rejected the API key. Set it in Settings → Backend connection.';
+  if (status === 401) return AUTH_ERROR_MESSAGE;
   if (status === 429) return 'Too many requests — please wait a moment and try again.';
   if (typeof detail === 'string' && detail) return detail;
   if (Array.isArray(detail)) {

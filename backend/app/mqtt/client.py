@@ -310,7 +310,12 @@ class MQTTClientManager:
         logger.debug("MQTT ← %s  (%d bytes)", topic, len(msg.payload))
         try:
             handler(msg.payload, bool(msg.retain))
-        except Exception as exc:
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException as exc:
+            # BaseException, not Exception: the libSQL (Turso) driver raises
+            # pyo3 PanicException, which would otherwise kill Paho's network
+            # thread and silently stop all MQTT traffic.
             logger.exception(
                 "MQTT handler error for topic %s: %s", topic, exc
             )

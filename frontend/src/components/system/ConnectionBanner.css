@@ -46,6 +46,12 @@
   padding: 0;
 }
 
+.conn-banner__actions {
+  display: flex;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
 .app-state-card {
   margin: 48px 20px;
   padding: 28px 22px;

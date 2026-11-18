@@ -16,9 +16,9 @@ MQTT payload models (MQTT*) mirror the ESP32 firmware JSON exactly.
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Annotated, List, Literal, Optional
+from typing import Annotated, Any, Dict, List, Literal, Optional
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, PlainSerializer
+from pydantic import AfterValidator, AliasChoices, BaseModel, ConfigDict, Field, PlainSerializer
 
 from app.utils.timestamps import as_utc, to_iso
 
@@ -222,6 +222,7 @@ class HouseholdConfigSchema(ApiModel):
     floor_area_sqm: Optional[float] = None
     utility_provider: Optional[str] = None
     tariff_rate_inr_per_kwh: float
+    relay_mismatch_threshold_percent: float = 30.0
     is_configured: bool = False
     updated_at: Optional[UtcDateTime] = None
 
@@ -234,6 +235,7 @@ class HouseholdConfigUpdate(ApiModel):
     floor_area_sqm: Optional[float] = Field(None, gt=0, le=100000)
     utility_provider: OptText = None
     tariff_rate_inr_per_kwh: Optional[float] = Field(None, gt=0, le=100)
+    relay_mismatch_threshold_percent: Optional[float] = Field(None, ge=5.0, le=100.0)
     is_configured: Optional[bool] = None
 
 
@@ -279,6 +281,7 @@ class ApplianceSchema(ApiModel):
     purchase_year: Optional[int] = None
     notes: Optional[str] = None
     relay_channel: Optional[int] = None
+    last_relay_channel: Optional[int] = None
     # True when the appliance is not on a relay → it runs as a simulated device.
     is_simulated: bool = True
     sim_auto: bool = True
@@ -306,6 +309,8 @@ class ApplianceCreate(ApiModel):
     notes: Optional[Annotated[str, Field(max_length=2000)]] = None
     # Firmware currently implements relay channel 1 only.
     relay_channel: Optional[int] = Field(None, ge=1, le=1)
+    # If true when assigning a relay channel, automatically unassign any current owner (recording last_relay_channel).
+    replace_relay_owner: bool = False
     # Simulated appliances only: follow the daily routine built from daily_hours.
     sim_auto: bool = True
 
@@ -328,6 +333,7 @@ class ApplianceUpdate(ApiModel):
     notes: Optional[Annotated[str, Field(max_length=2000)]] = None
     # Send `"relayChannel": null` to detach the appliance from its relay.
     relay_channel: Optional[int] = Field(None, ge=1, le=1)
+    replace_relay_owner: bool = False
     sim_auto: Optional[bool] = None
 
 
@@ -766,6 +772,7 @@ class NotificationSchema(ApiModel):
     title: str
     message: str
     link: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = Field(None, validation_alias=AliasChoices("metadata_dict", "metadata"))
     created_at: UtcDateTime
     read_at: Optional[UtcDateTime] = None
 
@@ -773,6 +780,47 @@ class NotificationSchema(ApiModel):
 class NotificationList(ApiModel):
     items: List[NotificationSchema]
     unread_count: int
+
+
+# ── Relay load mismatch ────────────────────────────────────────────────────────
+
+class RelayMismatchCandidate(ApiModel):
+    appliance_id: str
+    name: str
+    icon_type: Optional[str] = None
+    rated_watts: float
+    was_on_relay: bool = False
+    deviation_percent: float
+
+
+class RelayMismatchStatus(ApiModel):
+    active: bool
+    channel: int = 1
+    appliance_id: Optional[str] = None
+    appliance_name: Optional[str] = None
+    icon_type: Optional[str] = None
+    rated_watts: Optional[float] = None
+    live_watts: Optional[float] = None
+    deviation_percent: Optional[float] = None
+    threshold_percent: float = 30.0
+    big_diff_factor: float = 5.0
+    is_big_diff: bool = False
+    suggested_appliance: Optional[RelayMismatchCandidate] = None
+    matching_appliances: List[RelayMismatchCandidate] = []
+    notification_id: Optional[int] = None
+
+
+class RelayMismatchSwitchRequest(ApiModel):
+    appliance_id: ShortText
+
+
+class RelayMismatchConfirmSameResponse(ApiModel):
+    accepted: bool
+    requires_warning: bool = False
+    message: str
+    live_watts: Optional[float] = None
+    rated_watts: Optional[float] = None
+    deviation_percent: Optional[float] = None
 
 
 class AutomationLogEntry(ApiModel):
@@ -799,6 +847,44 @@ class BudgetSaverSettings(ApiModel):
     budget_configured: bool
     candidates: List[SaverCandidate] = []
     log: List[AutomationLogEntry] = []
+
+
+class BillScanError(ApiModel):
+    """Defined structured error format for AI bill scanning so the UI shows clear guidance."""
+    code: Literal[
+        "ai_unavailable",
+        "vision_unsupported",
+        "invalid_file",
+        "file_too_large",
+        "not_a_bill",
+        "unreadable_image",
+        "incomplete_bill",
+        "rate_limited",
+        "parse_failed",
+        "scan_failed",
+    ]
+    title: str
+    detail: str
+    hint: Optional[str] = None
+
+
+class BillScanResult(ApiModel):
+    """Fields extracted from an uploaded bill image/PDF by AI. All optional — the user reviews & confirms."""
+    ok: bool = True
+    provider: Optional[str] = None
+    account_id: Optional[str] = None
+    units_kwh: Optional[float] = None
+    amount_inr: Optional[float] = None
+    billing_month: Optional[int] = None
+    billing_year: Optional[int] = None
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+    due_date: Optional[str] = None
+    confidence: Optional[Literal["high", "medium", "low"]] = None
+    warnings: List[str] = []
+    scan_note: Optional[str] = None
+    ai_provider: Optional[str] = None
+    error: Optional[BillScanError] = None
 
 
 class BudgetSaverUpdate(ApiModel):

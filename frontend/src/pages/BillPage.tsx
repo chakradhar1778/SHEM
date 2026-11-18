@@ -10,7 +10,9 @@ import { BillVsUsageCard } from '../components/bill/BillVsUsageCard';
 import { BillDocumentViewer } from '../components/bill/BillDocumentViewer';
 import { isHomeBill } from '../context/billContextDef';
 import { BillPaymentControl, BillStatusPill } from '../components/bill/BillPayment';
-import { BILL_DOCUMENT_MAX_MB, BILL_DOCUMENT_TYPES } from '../api/billsApi';
+import { BILL_DOCUMENT_MAX_MB, BILL_DOCUMENT_TYPES, scanBillDocument } from '../api/billsApi';
+import type { BillScanError, BillScanResult } from '../api/types';
+import { errorMessage } from '../api/backendApi';
 import { formatCurrencyINR } from '../utils/billMath';
 import { fetchTariff } from '../api/billingApi';
 import { useApiQuery } from '../hooks/useApiQuery';
@@ -75,10 +77,20 @@ export function BillPage() {
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const fileName = file?.name ?? null;
+  const [scanPhase, setScanPhase] = useState<'idle' | 'uploading' | 'reading'>('idle');
+  const [scanResult, setScanResult] = useState<BillScanResult | null>(null);
+  const [scanError, setScanError] = useState<BillScanError | null>(null);
+  const [draftConfirmedOpen, setDraftConfirmedOpen] = useState(false);
+  const scanReqRef = useRef(0);
   const [viewing, setViewing] = useState<string | null>(null);
   const [rowError, setRowError] = useState<{ id: string; message: string } | null>(null);
   const attachRef = useRef<HTMLInputElement>(null);
   const [attachFor, setAttachFor] = useState<string | null>(null);
+
+  const providerOptions = useMemo(
+    () => (provider && !PROVIDERS.includes(provider) ? [provider, ...PROVIDERS] : PROVIDERS),
+    [provider]
+  );
 
   /** Client-side check (the server verifies the bytes again). */
   const checkFile = (f: File | undefined | null): string | null => {
@@ -88,11 +100,101 @@ export function BillPage() {
     return null;
   };
 
+  const runBillScan = async (f: File) => {
+    const reqId = ++scanReqRef.current;
+    setScanPhase('uploading');
+    setScanResult(null);
+    setScanError(null);
+    setDraftConfirmedOpen(false);
+    const phaseTimer = window.setTimeout(() => {
+      if (scanReqRef.current === reqId) setScanPhase('reading');
+    }, 450);
+
+    try {
+      const res = await scanBillDocument(f);
+      if (scanReqRef.current !== reqId) return;
+      if (!res.ok || res.error) {
+        setScanError(
+          res.error ?? {
+            code: 'scan_failed',
+            title: 'Could not read the bill',
+            detail: 'The AI was unable to extract details from this file.',
+            hint: 'Enter the bill details manually below or retry with a clearer photo.',
+          }
+        );
+        return;
+      }
+
+      setScanResult(res);
+      setDraftConfirmedOpen(true);
+
+      // Draft the form with AI-extracted fields (user reviews & confirms before saving).
+      if (res.provider) setProvider(res.provider);
+      if (res.accountId) setAccountId(res.accountId);
+      if (res.unitsKWh != null) setUnits(String(res.unitsKWh));
+      if (res.amountINR != null) setAmount(String(res.amountINR));
+      if (res.billingMonth != null) setMonth(res.billingMonth);
+      if (res.billingYear != null) setYear(res.billingYear);
+      if (res.periodStart || res.periodEnd) {
+        const nextMonth = res.billingMonth ?? month;
+        const nextYear = res.billingYear ?? year;
+        const fallback = cycleFor(nextMonth, nextYear, cycleDay);
+        setPeriodOverride({
+          start: res.periodStart ?? fallback.start,
+          end: res.periodEnd ?? fallback.end,
+        });
+      }
+      if (res.dueDate) setDueDate(res.dueDate);
+      setErrors({});
+    } catch (err) {
+      if (scanReqRef.current !== reqId) return;
+      setScanError({
+        code: 'scan_failed',
+        title: 'AI scan unavailable',
+        detail: errorMessage(err),
+        hint: 'Your document is still attached. Enter the bill details manually below or tap Retry.',
+      });
+    } finally {
+      window.clearTimeout(phaseTimer);
+      if (scanReqRef.current === reqId) setScanPhase('idle');
+    }
+  };
+
   const pickFile = (f: File | undefined) => {
     const err = checkFile(f);
     setFileError(err);
     setFile(err ? null : f ?? null);
-    if (err && fileRef.current) fileRef.current.value = '';
+    setScanResult(null);
+    setScanError(null);
+    setDraftConfirmedOpen(false);
+    if (err || !f) {
+      scanReqRef.current += 1;
+      setScanPhase('idle');
+      if (err && fileRef.current) fileRef.current.value = '';
+      return;
+    }
+    void runBillScan(f);
+  };
+
+  const clearDocument = () => {
+    scanReqRef.current += 1;
+    setFile(null);
+    setFileError(null);
+    setScanPhase('idle');
+    setScanResult(null);
+    setScanError(null);
+    setDraftConfirmedOpen(false);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const clearAIDraft = () => {
+    setScanResult(null);
+    setDraftConfirmedOpen(false);
+    setUnits('');
+    setAmount('');
+    setDueDate('');
+    setAccountId('');
+    setPeriodOverride(null);
   };
 
   const attachToExisting = async (f: File | undefined) => {
@@ -116,7 +218,10 @@ export function BillPage() {
   })();
   const [errors, setErrors] = useState<{ units?: string; amount?: string; general?: string }>({});
 
-  const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
+  const years = useMemo(() => {
+    const base = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i);
+    return base.includes(year) ? base : [year, ...base].sort((a, b) => b - a);
+  }, [now, year]);
 
   const pickLocation = (id: string) => {
     setLocation(id);
@@ -184,7 +289,7 @@ export function BillPage() {
           <span className="form__label">Utility provider</span>
           <span className="form__select-wrap">
             <select className="form__input" value={provider} onChange={(e) => setProvider(e.target.value)}>
-              {PROVIDERS.map((p) => <option key={p}>{p}</option>)}
+              {providerOptions.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
             <ChevronDown className="form__chev" />
           </span>
@@ -244,11 +349,11 @@ export function BillPage() {
         <div className="bill__upload">
           <span className="bill__upload-icon"><UploadIcon size={26} /></span>
           <span className="bill__upload-text">
-            <b>Add bill document <i>(optional)</i></b>
+            <b>Upload bill for AI scan <i>(optional)</i></b>
             <span>{fileName ?? `PDF, JPG, PNG or WebP · up to ${BILL_DOCUMENT_MAX_MB} MB`}</span>
           </span>
           {fileName ? (
-            <button type="button" className="icon-btn" aria-label="Remove document" onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ''; }}>
+            <button type="button" className="icon-btn" aria-label="Remove document" onClick={clearDocument} disabled={scanPhase !== 'idle'}>
               <CloseIcon size={18} />
             </button>
           ) : (
@@ -259,9 +364,103 @@ export function BillPage() {
           <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" hidden onChange={(e) => pickFile(e.target.files?.[0])} />
         </div>
         {fileError && <p className="form__error" role="alert">{fileError}</p>}
-        {fileName && <p className="bill__note">Saved with the bill so you can view it later from Bill history. SHEM doesn’t read its contents.</p>}
 
-        <div className="bill__divider"><span>or enter details manually</span></div>
+        {scanPhase !== 'idle' && (
+          <div className="bill-scan bill-scan--progress" role="status" aria-live="polite">
+            <div className="bill-scan__head">
+              <span className="bill-scan__spinner" aria-hidden="true" />
+              <div>
+                <b>{scanPhase === 'uploading' ? 'Uploading bill to AI…' : 'AI is reading your bill…'}</b>
+                <span>
+                  {scanPhase === 'uploading'
+                    ? 'Sending document securely to extract billing details'
+                    : 'Drafting units consumed, total amount, billing dates and due date'}
+                </span>
+              </div>
+            </div>
+            <div className="bill-scan__bar" aria-hidden="true">
+              <div className={`bill-scan__bar-fill ${scanPhase === 'reading' ? 'is-reading' : ''}`} />
+            </div>
+          </div>
+        )}
+
+        {scanError && scanPhase === 'idle' && (
+          <div className="bill-scan bill-scan--error" role="alert">
+            <div className="bill-scan__err-head">
+              <b>{scanError.title}</b>
+              <span className="bill-scan__code">{scanError.code.replace(/_/g, ' ')}</span>
+            </div>
+            <p className="bill-scan__detail">{scanError.detail}</p>
+            {scanError.hint && <p className="bill-scan__hint">{scanError.hint}</p>}
+            {file && (
+              <div className="bill-scan__actions">
+                <button type="button" className="btn btn--soft btn--small" onClick={() => void runBillScan(file)}>
+                  Retry AI scan
+                </button>
+                <button type="button" className="btn-link" onClick={() => fileRef.current?.click()}>
+                  Choose another file
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {scanResult && scanResult.ok && scanPhase === 'idle' && draftConfirmedOpen && (
+          <div className="bill-scan bill-scan--draft" role="region" aria-label="AI drafted bill confirmation">
+            <div className="bill-scan__draft-head">
+              <div>
+                <b>AI drafted your bill — please confirm</b>
+                <span>Review the extracted values below. You can confirm &amp; save directly or adjust any field.</span>
+              </div>
+              {scanResult.confidence && (
+                <span className={`bill-scan__conf is-${scanResult.confidence}`}>
+                  {scanResult.confidence} confidence
+                </span>
+              )}
+            </div>
+
+            <dl className="bill-scan__summary">
+              <div><dt>Provider</dt><dd>{provider || '—'}</dd></div>
+              <div><dt>Period</dt><dd>{MONTHS[month - 1]} {year}</dd></div>
+              <div><dt>Units</dt><dd>{units ? `${units} kWh` : 'Missing'}</dd></div>
+              <div><dt>Amount</dt><dd>{amount ? formatCurrencyINR(Number(amount)) : 'Missing'}</dd></div>
+              {dueDate && <div><dt>Due date</dt><dd>{formatDue(dueDate)}</dd></div>}
+              {accountId && <div><dt>Account ID</dt><dd>{accountId}</dd></div>}
+            </dl>
+
+            {scanResult.scanNote && <p className="bill-scan__note">{scanResult.scanNote}</p>}
+            {scanResult.warnings && scanResult.warnings.length > 0 && (
+              <ul className="bill-scan__warnings">
+                {scanResult.warnings.map((w, idx) => <li key={idx}>{w}</li>)}
+              </ul>
+            )}
+
+            <div className="bill-scan__actions">
+              <button type="submit" className="btn btn--primary btn--small" id="btn-confirm-ai-bill">
+                Confirm &amp; save bill
+              </button>
+              <button type="button" className="btn btn--soft btn--small" onClick={() => setDraftConfirmedOpen(false)}>
+                Edit details below
+              </button>
+              <button type="button" className="btn-link" onClick={clearAIDraft}>
+                Clear draft
+              </button>
+            </div>
+          </div>
+        )}
+
+        {scanResult && scanResult.ok && scanPhase === 'idle' && !draftConfirmedOpen && (
+          <div className="bill-scan bill-scan--compact" role="status">
+            <span>AI-filled draft active — edit any field below and tap Save bill.</span>
+            <button type="button" className="btn-link" onClick={clearAIDraft}>Clear draft</button>
+          </div>
+        )}
+
+        {fileName && scanPhase === 'idle' && (
+          <p className="bill__note">Saved with the bill so you can view it later from Bill history.</p>
+        )}
+
+        <div className="bill__divider"><span>{scanResult?.ok ? 'review or adjust drafted details' : 'or enter details manually'}</span></div>
 
         <div className="bill__grid">
           <div className="bill__field bill__field--wide">

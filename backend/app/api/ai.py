@@ -67,9 +67,25 @@ def _mqtt_connected(request: Request) -> bool:
 @router.get("/status")
 def ai_status() -> Dict[str, Any]:
     specs = provider_specs()
-    return {"enabled": settings.ai_enabled, "configured": get_router().available,
-            "primaryProvider": settings.ai_primary_provider,
-            "providers": [{"name": s["name"], "model": s["model"], "configured": bool(s["api_key"])} for s in specs]}
+    llm_router = get_router()
+    provider_items = []
+    for s in specs:
+        inst = llm_router.get_provider(s["name"])
+        key_count = len(s.get("api_keys") or [])
+        healthy_count = getattr(inst, "healthy_key_count", key_count) if inst else 0
+        provider_items.append({
+            "name": s["name"],
+            "model": s["model"],
+            "configured": bool(s["api_key"]),
+            "keyCount": key_count,
+            "healthyKeyCount": healthy_count,
+        })
+    return {
+        "enabled": settings.ai_enabled,
+        "configured": llm_router.available,
+        "primaryProvider": settings.ai_primary_provider,
+        "providers": provider_items,
+    }
 
 
 @router.get("/suggestions")

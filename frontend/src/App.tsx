@@ -28,6 +28,7 @@ import { BillProvider } from './context/BillContext';
 import { TargetProvider } from './context/TargetContext';
 import { AIProvider } from './context/AIContext';
 import { AIAssistant } from './components/ai/AIAssistant';
+import { RelayMismatchModal } from './components/appliances/RelayMismatchModal';
 import { useHomeConfig } from './hooks/useHomeConfig';
 import './styles/ui.css';
 import './styles/charts.css';
@@ -192,6 +193,7 @@ function AppLayout() {
           </div>
         </nav>
         <AIAssistant />
+        <RelayMismatchModal />
       </div>
     </div>
   );

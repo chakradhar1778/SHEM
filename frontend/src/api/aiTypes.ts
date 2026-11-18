@@ -70,7 +70,7 @@ export interface AIStatus {
   enabled: boolean;
   configured: boolean;
   primaryProvider: 'gemini' | 'groq';
-  providers: { name: string; model: string; configured: boolean }[];
+  providers: { name: string; model: string; configured: boolean; keyCount?: number; healthyKeyCount?: number }[];
 }
 
 export interface Suggestion {

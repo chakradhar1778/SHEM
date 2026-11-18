@@ -1,5 +1,5 @@
 import { apiBlob, apiRequest, apiUpload } from './backendApi';
-import type { BillDTO } from './types';
+import type { BillDTO, BillScanResult } from './types';
 
 export type BillWrite = Partial<Omit<BillDTO, 'createdAt' | 'hasDocument' | 'documentContentType' | 'documentSize' | 'documentUploadedAt' | 'paidOn' | 'paidAt'>>;
 
@@ -20,6 +20,10 @@ export const BILL_DOCUMENT_MAX_MB = 10;
 
 export const uploadBillDocument = (id: string, file: File) =>
   apiUpload<BillDTO>(`/api/bills/${encodeURIComponent(id)}/document?filename=${encodeURIComponent(file.name.slice(0, 200))}`, file);
+
+/** Send an uploaded bill image/PDF to the AI scanner to draft bill fields for confirmation. */
+export const scanBillDocument = (file: File) =>
+  apiUpload<BillScanResult>('/api/bills/scan', file, 'POST');
 
 export const fetchBillDocument = (id: string) => apiBlob(`/api/bills/${encodeURIComponent(id)}/document`);
 

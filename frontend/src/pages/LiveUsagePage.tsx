@@ -5,6 +5,7 @@ import { useInventory } from '../hooks/useInventory';
 import { LiveSpeedometerGauge } from '../components/live/LiveSpeedometerGauge';
 import { ApplianceIcon } from '../components/appliances/ApplianceIcons';
 import { ApplianceRelayControl } from '../components/appliances/ApplianceRelayControl';
+import { RelayMismatchTag } from '../components/appliances/RelayMismatchTag';
 import { SimToggle } from '../components/appliances/SimToggle';
 import { SourceTag } from '../components/appliances/SourceTag';
 import { PageHero } from '../components/art/PageHero';
@@ -91,7 +92,9 @@ export function LiveUsagePage() {
                 <Link to={`/devices/edit/${item.id}`} className="row">
                   <span className="row__icon"><ApplianceIcon type={item.iconType} size={34} /></span>
                   <span className="row__body">
-                    <span className="row__title">{item.name} <SourceTag source="metered" compact /></span>
+                    <span className="row__title">
+                      {item.name} <SourceTag source="metered" compact /> <RelayMismatchTag applianceId={item.id} />
+                    </span>
                     <span className="row__sub">Relay {item.relayChannel}{isLive ? ` · ${formatWatts(meteredPowerW)} now` : ''}</span>
                   </span>
                   <span className={`state-pill ${relayOn ? 'is-on' : ''}`}>{relay?.commandedState ? (relayOn ? 'On' : 'Off') : '—'}</span>

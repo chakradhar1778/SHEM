@@ -54,15 +54,40 @@ def _require_room(db: Session, room_id: Optional[str]) -> None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Room '{room_id}' does not exist.")
 
 
-def _require_free_relay_channel(db: Session, channel: Optional[int], exclude_id: Optional[str] = None) -> None:
+def _require_free_relay_channel(
+    db: Session,
+    channel: Optional[int],
+    exclude_id: Optional[str] = None,
+    replace_owner: bool = False,
+) -> None:
     if channel is None:
         return
-    stmt = select(Appliance.name).where(Appliance.relay_channel == channel)
+    stmt = select(Appliance).where(Appliance.relay_channel == channel)
     if exclude_id:
         stmt = stmt.where(Appliance.id != exclude_id)
-    owner = db.scalar(stmt.limit(1))
-    if owner is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT, f"Relay channel {channel} is already assigned to '{owner}'.")
+    owners = list(db.scalars(stmt).all())
+    if not owners:
+        return
+    if not replace_owner:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Relay channel {channel} is already assigned to '{owners[0].name}'.",
+        )
+    now = utcnow()
+    for owner in owners:
+        owner.relay_channel = None
+        owner.last_relay_channel = channel
+        owner.status = "off"
+        owner.sim_manual_state = "OFF"
+        owner.sim_override_until = None
+        owner.updated_at = now
+    # Any open mismatch notifications for this relay are now resolved.
+    from app.models.db_models import Notification
+    db.execute(
+        update(Notification)
+        .where(Notification.kind == "relay_mismatch", Notification.read_at.is_(None))
+        .values(read_at=now)
+    )
 
 
 # ── Rooms ──────────────────────────────────────────────────────────────────────
@@ -126,15 +151,39 @@ def list_appliances(
              status_code=status.HTTP_201_CREATED, tags=["Inventory"])
 def create_appliance(app_in: ApplianceCreate, db: Session = Depends(get_db)) -> ApplianceSchema:
     _require_room(db, app_in.room_id)
-    _require_free_relay_channel(db, app_in.relay_channel)
+    _require_free_relay_channel(db, app_in.relay_channel, replace_owner=app_in.replace_relay_owner)
     app_id = app_in.id or f"app-{uuid.uuid4().hex[:8]}"
     if db.get(Appliance, app_id) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, f"Appliance '{app_id}' already exists.")
     now = utcnow()
-    item = Appliance(**app_in.model_dump(exclude={"id"}, by_alias=False), id=app_id, created_at=now, updated_at=now)
+    data = app_in.model_dump(exclude={"id", "replace_relay_owner"}, by_alias=False)
+    if app_in.relay_channel is not None:
+        data["last_relay_channel"] = app_in.relay_channel
+        if app_in.replace_relay_owner:
+            data["status"] = "on"
+            data["sim_manual_state"] = None
+            data["sim_override_until"] = None
+            from app.config import get_settings
+            from app.services.device_service import upsert_relay_channel
+            upsert_relay_channel(db, get_settings().device_id, app_in.relay_channel, "ON", now)
+    item = Appliance(**data, id=app_id, created_at=now, updated_at=now)
     db.add(item)
     db.commit()
     db.refresh(item)
+    if app_in.replace_relay_owner and app_in.relay_channel is not None:
+        try:
+            from app.config import get_settings
+            from app.services.broadcaster import broadcaster
+            from app.services.simulation_service import simulation_service
+            sim_payload = simulation_service.tick(db, now)
+            broadcaster.publish_from_thread("sim_update", sim_payload)
+            broadcaster.publish_from_thread("relay_state", {
+                "deviceId": get_settings().device_id,
+                "channel": app_in.relay_channel,
+                "state": "ON",
+            })
+        except Exception:
+            pass
     return ApplianceSchema.model_validate(item)
 
 
@@ -145,19 +194,55 @@ def update_appliance(appliance_id: str, update_in: ApplianceUpdate, db: Session 
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Appliance not found.")
     if "room_id" in update_in.model_fields_set:
         _require_room(db, update_in.room_id)
+    prev_relay = item.relay_channel
     if "relay_channel" in update_in.model_fields_set:
-        _require_free_relay_channel(db, update_in.relay_channel, exclude_id=appliance_id)
+        _require_free_relay_channel(
+            db,
+            update_in.relay_channel,
+            exclude_id=appliance_id,
+            replace_owner=update_in.replace_relay_owner,
+        )
     was_simulated, was_auto = item.is_simulated, item.sim_auto
-    apply_partial_update(item, update_in, non_nullable=("name", "quantity", "daily_hours", "status", "sim_auto"))
+    apply_partial_update(
+        item,
+        update_in,
+        non_nullable=("name", "quantity", "daily_hours", "status", "sim_auto"),
+        exclude=("replace_relay_owner",),
+    )
+    if item.relay_channel is not None:
+        item.last_relay_channel = item.relay_channel
+    elif prev_relay is not None:
+        item.last_relay_channel = prev_relay
     # Switching between relay and simulation, or toggling the routine, drops any manual override.
     if item.is_simulated != was_simulated or item.sim_auto != was_auto:
         item.sim_manual_state = None
         item.sim_override_until = None
         if not item.is_simulated:
             item.status = "off"
+    if item.relay_channel is not None and update_in.replace_relay_owner:
+        item.status = "on"
+        item.sim_manual_state = None
+        item.sim_override_until = None
+        from app.config import get_settings
+        from app.services.device_service import upsert_relay_channel
+        upsert_relay_channel(db, get_settings().device_id, item.relay_channel, "ON", utcnow())
     item.updated_at = utcnow()
     db.commit()
     db.refresh(item)
+    if item.relay_channel is not None and update_in.replace_relay_owner:
+        try:
+            from app.config import get_settings
+            from app.services.broadcaster import broadcaster
+            from app.services.simulation_service import simulation_service
+            sim_payload = simulation_service.tick(db, item.updated_at)
+            broadcaster.publish_from_thread("sim_update", sim_payload)
+            broadcaster.publish_from_thread("relay_state", {
+                "deviceId": get_settings().device_id,
+                "channel": item.relay_channel,
+                "state": "ON",
+            })
+        except Exception:
+            pass
     return ApplianceSchema.model_validate(item)
 
 

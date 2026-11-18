@@ -14,7 +14,9 @@ export const deleteRoom = (id: string) =>
 
 export const fetchAppliances = () => apiRequest<ApplianceDTO[]>('/api/inventory/appliances');
 
-export type ApplianceWrite = Partial<Omit<ApplianceDTO, 'createdAt' | 'updatedAt'>>;
+export type ApplianceWrite = Partial<Omit<ApplianceDTO, 'createdAt' | 'updatedAt'>> & {
+  replaceRelayOwner?: boolean;
+};
 
 export const createAppliance = (appliance: ApplianceWrite & { name: string }) =>
   apiRequest<ApplianceDTO>('/api/inventory/appliances', { method: 'POST', body: appliance });

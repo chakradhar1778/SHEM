@@ -13,6 +13,7 @@ function fromDTO(dto: HouseholdConfigDTO): HomeConfig {
     occupants: dto.occupants,
     location: dto.location ?? '',
     tariffRateINR: dto.tariffRateINRPerKWh,
+    relayMismatchThresholdPercent: dto.relayMismatchThresholdPercent ?? 30,
     isConfigured: dto.isConfigured,
   };
 }
@@ -24,6 +25,9 @@ function toDTO(config: Partial<HomeConfig>): Partial<HouseholdConfigDTO> {
   if (config.occupants !== undefined) out.occupants = config.occupants;
   if (config.location !== undefined) out.location = config.location.trim() || null;
   if (config.tariffRateINR !== undefined) out.tariffRateINRPerKWh = config.tariffRateINR;
+  if (config.relayMismatchThresholdPercent !== undefined) {
+    out.relayMismatchThresholdPercent = config.relayMismatchThresholdPercent;
+  }
   if (config.isConfigured !== undefined) out.isConfigured = config.isConfigured;
   return out;
 }

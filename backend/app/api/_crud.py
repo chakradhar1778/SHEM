@@ -8,13 +8,18 @@ from fastapi import HTTPException, status
 from pydantic import BaseModel
 
 
-def apply_partial_update(obj, update: BaseModel, non_nullable: Iterable[str] = ()) -> dict:
+def apply_partial_update(
+    obj,
+    update: BaseModel,
+    non_nullable: Iterable[str] = (),
+    exclude: Iterable[str] = (),
+) -> dict:
     """
     Apply only the fields the client actually sent (exclude_unset), so that
     an explicit null can clear a nullable field while omitted fields stay
     untouched. Explicit null on a non-nullable field → 422.
     """
-    changes = update.model_dump(exclude_unset=True, by_alias=False)
+    changes = update.model_dump(exclude_unset=True, exclude=set(exclude), by_alias=False)
     blocked = [k for k in non_nullable if k in changes and changes[k] is None]
     if blocked:
         raise HTTPException(422, f"Fields cannot be null: {', '.join(blocked)}")

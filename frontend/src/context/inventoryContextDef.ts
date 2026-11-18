@@ -30,6 +30,8 @@ export interface InventoryItem {
   dailyHours?: number;
   /** Relay channel switching this appliance; null/undefined = not relay-controlled */
   relayChannel?: number | null;
+  /** Remembers the relay channel this appliance was previously plugged into */
+  lastRelayChannel?: number | null;
   /** Simulated appliances (no relay): follow the daily routine from dailyHours */
   simAuto?: boolean;
 }
@@ -41,7 +43,15 @@ export interface InventoryContextType extends SyncState {
     catalogueItem: CatalogueItem,
     roomId: string,
     quantity: number,
-    metadata?: { brand?: string; model?: string; isEssential?: EssentialStatus; relayChannel?: number | null; dailyHours?: number; simAuto?: boolean }
+    metadata?: {
+      brand?: string;
+      model?: string;
+      isEssential?: EssentialStatus;
+      relayChannel?: number | null;
+      replaceRelayOwner?: boolean;
+      dailyHours?: number;
+      simAuto?: boolean;
+    }
   ) => void;
   updateQuantity: (itemId: string, delta: number) => void;
   setQuantity: (itemId: string, quantity: number) => void;
@@ -61,6 +71,7 @@ export interface InventoryContextType extends SyncState {
       dailyHours?: number;
       /** number = assign, null = detach, undefined = leave unchanged */
       relayChannel?: number | null;
+      replaceRelayOwner?: boolean;
       simAuto?: boolean;
     }
   ) => void;

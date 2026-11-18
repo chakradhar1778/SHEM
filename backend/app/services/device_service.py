@@ -60,6 +60,7 @@ def _add_event(db: Session, device_id: str, status: str, details: str, at: datet
 
 def upsert_relay_channel(db: Session, device_id: str, channel_no: int, state: str, at: datetime) -> bool:
     """Set the reported commanded state (race-safe upsert). Returns True if the state changed."""
+    get_or_create_device(db, device_id)
     ch = db.scalar(
         select(RelayChannel).where(RelayChannel.device_id == device_id, RelayChannel.channel == channel_no)
     )

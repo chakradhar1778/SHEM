@@ -8,6 +8,8 @@ export interface HomeConfig {
   location: string;
   /** Electricity tariff used for cost estimates (₹/kWh), stored on the backend. */
   tariffRateINR: number;
+  /** % deviation from rated watts that triggers a relay load mismatch alert (default 30). */
+  relayMismatchThresholdPercent: number;
   isConfigured: boolean;
 }
 
@@ -18,6 +20,7 @@ export const DEFAULT_HOME_CONFIG: HomeConfig = {
   occupants: 2,
   location: '',
   tariffRateINR: 7.5,
+  relayMismatchThresholdPercent: 30,
   isConfigured: false,
 };
 

@@ -87,6 +87,17 @@ class Settings(BaseSettings):
     alerts_enabled: bool = True
     alerts_interval_seconds: int = 60
 
+    # ── Relay load mismatch detection ─────────────────────────
+    relay_mismatch_enabled: bool = True
+    # Default % deviation from rated watts that triggers an alert (overridden by HouseholdConfig in Settings UI)
+    relay_mismatch_threshold_percent: float = 30.0
+    # Ignore live readings below this (avoids noise when relay is off / unloaded)
+    relay_mismatch_min_watts: float = 5.0
+    # Live watts >= rated * factor triggers a hard safety warning even if user says "still same appliance"
+    relay_mismatch_big_diff_factor: float = 5.0
+    # Cooldown window (minutes) before re-firing the same mismatch alert
+    relay_mismatch_cooldown_minutes: int = 60
+
     # ── SHEM AI (energy guide) ─────────────────────────────────
     # Both providers are called through the OpenAI SDK (OpenAI-compatible
     # endpoints). The primary is tried first; the other one is the fallback.
@@ -98,6 +109,8 @@ class Settings(BaseSettings):
     groq_api_key: str = ""
     groq_model: str = "openai/gpt-oss-120b"
     groq_base_url: str = "https://api.groq.com/openai/v1"
+    gemini_api_keys: str = ""   # comma-separated extra keys; combined with gemini_api_key
+    groq_api_keys: str = ""     # comma-separated extra keys; combined with groq_api_key
     ai_temperature: float = 0.4
     ai_request_timeout_seconds: float = 60.0
     ai_max_tool_rounds: int = 8
@@ -142,6 +155,27 @@ class Settings(BaseSettings):
     # ── App Meta ───────────────────────────────────────────────
     app_name: str = "SHEM Backend"
     app_version: str = "0.2.0"
+
+    @staticmethod
+    def _parse_api_keys(primary: str, extra: str) -> List[str]:
+        """Combine single and comma/newline-separated API key strings, deduped in order."""
+        out: List[str] = []
+        for raw in (extra, primary):
+            for part in raw.replace("\n", ",").replace(";", ",").split(","):
+                key = part.strip()
+                if key and key not in out:
+                    out.append(key)
+        return out
+
+    @property
+    def gemini_keys_list(self) -> List[str]:
+        """All configured Gemini API keys (deduped, non-empty)."""
+        return self._parse_api_keys(self.gemini_api_key, self.gemini_api_keys)
+
+    @property
+    def groq_keys_list(self) -> List[str]:
+        """All configured Groq API keys (deduped, non-empty)."""
+        return self._parse_api_keys(self.groq_api_key, self.groq_api_keys)
 
     @property
     def allowed_origins_list(self) -> List[str]:

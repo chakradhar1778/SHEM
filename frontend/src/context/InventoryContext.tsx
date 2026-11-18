@@ -50,6 +50,7 @@ function itemFromDTO(dto: ApplianceDTO): InventoryItem {
     addedAt: dto.createdAt ? Date.parse(dto.createdAt) : Date.now(),
     dailyHours: dto.dailyHours,
     relayChannel: dto.relayChannel ?? null,
+    lastRelayChannel: dto.lastRelayChannel ?? null,
     simAuto: dto.simAuto ?? true,
   };
 }
@@ -138,10 +139,19 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     catalogueItem: CatalogueItem,
     roomId: string,
     quantity: number,
-    metadata?: { brand?: string; model?: string; isEssential?: EssentialStatus; relayChannel?: number | null; dailyHours?: number; simAuto?: boolean }
+    metadata?: {
+      brand?: string;
+      model?: string;
+      isEssential?: EssentialStatus;
+      relayChannel?: number | null;
+      replaceRelayOwner?: boolean;
+      dailyHours?: number;
+      simAuto?: boolean;
+    }
   ) => {
     const qty = clampQty(quantity);
     const relayChannel = metadata?.relayChannel ?? null;
+    const replaceRelayOwner = Boolean(metadata?.replaceRelayOwner && relayChannel != null);
     // A relay-controlled appliance is its own entry — never merged into an existing one.
     const existing =
       relayChannel == null
@@ -170,11 +180,21 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       addedAt: Date.now(),
       dailyHours: metadata?.dailyHours != null ? clampHours(metadata.dailyHours) : getDefaultDailyHours(catalogueItem.category),
       relayChannel,
+      lastRelayChannel: relayChannel,
       simAuto: metadata?.simAuto ?? true,
     };
-    inventoryRef.current = [item, ...inventoryRef.current];
-    setInventory((prev) => [item, ...prev]);
-    sync('add the appliance', afterRoom(roomId, () => createAppliance(itemToWrite(item))));
+    const nextList = replaceRelayOwner
+      ? [
+          item,
+          ...inventoryRef.current.map((i) =>
+            i.relayChannel === relayChannel ? { ...i, relayChannel: null, lastRelayChannel: relayChannel } : i
+          ),
+        ]
+      : [item, ...inventoryRef.current];
+    inventoryRef.current = nextList;
+    setInventory(nextList);
+    const payload = { ...itemToWrite(item), ...(replaceRelayOwner ? { replaceRelayOwner: true } : {}) };
+    sync('add the appliance', afterRoom(roomId, () => createAppliance(payload)));
   };
 
   const removeAppliance = (itemId: string) => {
@@ -249,6 +269,7 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
       roomId?: string;
       dailyHours?: number;
       relayChannel?: number | null;
+      replaceRelayOwner?: boolean;
       simAuto?: boolean;
     }
   ) => {
@@ -289,13 +310,26 @@ export function InventoryProvider({ children }: { children: React.ReactNode }) {
     if (updates.relayChannel !== undefined) {
       patch.relayChannel = updates.relayChannel;
       write.relayChannel = updates.relayChannel;
+      if (updates.relayChannel != null) patch.lastRelayChannel = updates.relayChannel;
+    }
+    if (updates.replaceRelayOwner) {
+      write.replaceRelayOwner = true;
     }
     if (updates.simAuto !== undefined) {
       patch.simAuto = updates.simAuto;
       write.simAuto = updates.simAuto;
     }
     if (Object.keys(write).length === 0) return;
-    setInventory((prev) => prev.map((i) => (i.id === itemId ? { ...i, ...patch } : i)));
+    const replaceCh = updates.replaceRelayOwner && updates.relayChannel != null ? updates.relayChannel : null;
+    setInventory((prev) =>
+      prev.map((i) => {
+        if (i.id === itemId) return { ...i, ...patch };
+        if (replaceCh != null && i.relayChannel === replaceCh) {
+          return { ...i, relayChannel: null, lastRelayChannel: replaceCh };
+        }
+        return i;
+      })
+    );
     sync('save appliance details', afterRoom(write.roomId, () => updateAppliance(itemId, write)));
   };
 

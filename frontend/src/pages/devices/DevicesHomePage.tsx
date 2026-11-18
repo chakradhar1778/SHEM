@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ApplianceIcon } from '../../components/appliances/ApplianceIcons';
 import { PageHero } from '../../components/art/PageHero';
 import { ApplianceSwitch } from '../../components/appliances/ApplianceSwitch';
+import { RelayMismatchTag } from '../../components/appliances/RelayMismatchTag';
 import { SourceTag } from '../../components/appliances/SourceTag';
 import { RouteToast } from '../../components/ui/RouteToast';
 import { useInventory } from '../../hooks/useInventory';
@@ -47,7 +48,10 @@ export function DevicesHomePage() {
                   <Link to={`/devices/edit/${item.id}`} className="device-row__link">
                     <span className="row__icon"><ApplianceIcon type={item.iconType} size={34} /></span>
                     <span className="row__body">
-                      <span className="row__title">{item.name}{item.quantity > 1 ? ` × ${item.quantity}` : ''}</span>
+                      <span className="row__title">
+                        {item.name}{item.quantity > 1 ? ` × ${item.quantity}` : ''}{' '}
+                        {item.relayChannel != null && <RelayMismatchTag applianceId={item.id} compact />}
+                      </span>
                       <span className="row__sub">
                         <SourceTag source={item.relayChannel != null ? 'metered' : 'simulated'} compact />{' '}
                         {room?.name ?? 'No room'} · {item.ratedWatts} W{item.relayChannel != null ? ` · Relay ${item.relayChannel}` : ''}

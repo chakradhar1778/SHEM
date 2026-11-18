@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchNotifications, markAllNotificationsRead, markNotificationRead } from '../../api/alertsApi';
 import { CONNECTION_CHANGED_EVENT, NOTIFICATION_EVENT } from '../../api/backendApi';
 import type { NotificationItem } from '../../api/types';
+import { openRelayMismatchModal, RELAY_MISMATCH_CHANGED_EVENT } from '../../hooks/useRelayMismatch';
 import './NotificationBell.css';
 
 function ago(iso: string): string {
@@ -44,9 +45,11 @@ export function NotificationBell() {
     };
     window.addEventListener(NOTIFICATION_EVENT, onNew);
     window.addEventListener(CONNECTION_CHANGED_EVENT, load);
+    window.addEventListener(RELAY_MISMATCH_CHANGED_EVENT, load);
     return () => {
       window.removeEventListener(NOTIFICATION_EVENT, onNew);
       window.removeEventListener(CONNECTION_CHANGED_EVENT, load);
+      window.removeEventListener(RELAY_MISMATCH_CHANGED_EVENT, load);
     };
   }, [load]);
 
@@ -64,12 +67,16 @@ export function NotificationBell() {
   }, [open]);
 
   const openItem = (n: NotificationItem) => {
+    setOpen(false);
+    if (n.kind === 'relay_mismatch') {
+      openRelayMismatchModal();
+      return;
+    }
     if (!n.readAt) {
       setItems((prev) => prev.map((p) => (p.id === n.id ? { ...p, readAt: new Date().toISOString() } : p)));
       setUnread((u) => Math.max(0, u - 1));
       markNotificationRead(n.id).catch(() => undefined);
     }
-    setOpen(false);
     if (n.link) navigate(n.link);
   };
 

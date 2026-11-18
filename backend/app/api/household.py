@@ -28,7 +28,9 @@ def get_or_create_config(db: Session) -> HouseholdConfig:
     if cfg is None:
         cfg = HouseholdConfig(
             id=1, home_name="My Home", home_type="Apartment", occupants=2,
-            tariff_rate_inr_per_kwh=settings.default_tariff_rate_inr_per_kwh, updated_at=utcnow(),
+            tariff_rate_inr_per_kwh=settings.default_tariff_rate_inr_per_kwh,
+            relay_mismatch_threshold_percent=settings.relay_mismatch_threshold_percent,
+            updated_at=utcnow(),
         )
         db.add(cfg)
         db.commit()
@@ -45,7 +47,18 @@ def get_household_config(db: Session = Depends(get_db)) -> HouseholdConfigSchema
 @router.put("/household/config", response_model=HouseholdConfigSchema, tags=["Household"])
 def update_household_config(data: HouseholdConfigUpdate, db: Session = Depends(get_db)) -> HouseholdConfigSchema:
     cfg = get_or_create_config(db)
-    apply_partial_update(cfg, data, non_nullable=("home_name", "home_type", "occupants", "tariff_rate_inr_per_kwh", "is_configured"))
+    apply_partial_update(
+        cfg,
+        data,
+        non_nullable=(
+            "home_name",
+            "home_type",
+            "occupants",
+            "tariff_rate_inr_per_kwh",
+            "relay_mismatch_threshold_percent",
+            "is_configured",
+        ),
+    )
     cfg.updated_at = utcnow()
     db.commit()
     db.refresh(cfg)

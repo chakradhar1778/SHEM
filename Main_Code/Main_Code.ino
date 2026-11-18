@@ -48,7 +48,7 @@
 // ============================================================
 // 1. WIFI + MQTT CREDENTIALS
 // ============================================================
-// WIFI_SSID, WIFI_PASSWORD, MQTT_USERNAME and MQTT_PASSWORD live in
+// WIFI_NETWORKS[], WIFI_NETWORK_COUNT, MQTT_USERNAME and MQTT_PASSWORD live in
 // secrets.h (git-ignored). Copy secrets.example.h to secrets.h and fill it in.
 
 #include "secrets.h"
@@ -234,6 +234,10 @@ String getTimestamp() {
 // 10. WIFI CONNECTION
 // ============================================================
 
+// Milliseconds to wait for each individual network before moving on.
+// 20 s total / 4 max networks = 5 s per network.
+#define WIFI_PER_NETWORK_TIMEOUT (WIFI_RETRY_INTERVAL / 4)
+
 void connectWiFi() {
 
   if (WiFi.status() == WL_CONNECTED) {
@@ -249,14 +253,46 @@ void connectWiFi() {
   lastWiFiAttempt = now;
 
   Serial.println();
-  Serial.println("Connecting to WiFi...");
+  Serial.println("Scanning WiFi networks (priority order)...");
 
-  // Fully reset any half-finished attempt before restarting, so
-  // WiFi.begin() does not collide with the auto-reconnect logic
-  // (this collision starves IDLE0 and trips the task watchdog).
+  // Fully reset any half-finished attempt before we start the scan.
+  // This avoids colliding with auto-reconnect and tripping the task watchdog.
   WiFi.disconnect(false, false);
   delay(100);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+  for (int i = 0; i < WIFI_NETWORK_COUNT; i++) {
+
+    Serial.print("Trying [");
+    Serial.print(i);
+    Serial.print("] ");
+    Serial.println(WIFI_NETWORKS[i].ssid);
+
+    WiFi.begin(WIFI_NETWORKS[i].ssid, WIFI_NETWORKS[i].password);
+
+    unsigned long start = millis();
+
+    while (WiFi.status() != WL_CONNECTED &&
+           millis() - start < WIFI_PER_NETWORK_TIMEOUT) {
+      delay(200);
+    }
+
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.print("Connected to: ");
+      Serial.println(WIFI_NETWORKS[i].ssid);
+      Serial.print("IP: ");
+      Serial.println(WiFi.localIP());
+      return;   // success — stop trying further networks
+    }
+
+    Serial.print("Failed: ");
+    Serial.println(WIFI_NETWORKS[i].ssid);
+
+    // Disconnect cleanly before trying the next network.
+    WiFi.disconnect(false, false);
+    delay(100);
+  }
+
+  Serial.println("All WiFi networks failed. Will retry after interval.");
 }
 
 
@@ -713,22 +749,35 @@ void updateLCD() {
 
       lcd.setCursor(0, 0);
       lcd.print("Relay 1:");
-
       lcd.print(relayState ? "ON" : "OFF");
 
       lcd.setCursor(0, 1);
-      lcd.print("WiFi:");
-
-      lcd.print(
-        WiFi.status() == WL_CONNECTED
-        ? "Connected"
-        : "Offline"
-      );
+      lcd.print("MQTT:");
+      lcd.print(mqtt.connected() ? "Online" : "Offline");
 
       break;
+
+
+    case 4: {
+
+      lcd.setCursor(0, 0);
+      lcd.print("WiFi Status:");
+
+      lcd.setCursor(0, 1);
+
+      if (WiFi.status() == WL_CONNECTED) {
+        // Full line 2 = 16 chars — show SSID truncated to fit.
+        String ssid = WiFi.SSID();
+        lcd.print(ssid.substring(0, 16));
+      } else {
+        lcd.print("Offline");
+      }
+
+      break;
+    }
   }
 
-  lcdPage = (lcdPage + 1) % 4;
+  lcdPage = (lcdPage + 1) % 5;
 }
 
 

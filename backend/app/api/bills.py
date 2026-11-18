@@ -13,11 +13,19 @@ from fastapi.responses import FileResponse
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session
 
+from app.ai.bill_scanner import scan_bill_bytes
 from app.api._crud import apply_partial_update
 from app.config import get_settings
 from app.database import get_db
 from app.models.db_models import ElectricityBill
-from app.models.schemas import BillPaidRequest, ElectricityBillCreate, ElectricityBillSchema, ElectricityBillUpdate
+from app.models.schemas import (
+    BillPaidRequest,
+    BillScanError,
+    BillScanResult,
+    ElectricityBillCreate,
+    ElectricityBillSchema,
+    ElectricityBillUpdate,
+)
 from app.services import document_store
 from app.utils.rate_limit import limiter
 from app.utils.timestamps import utcnow
@@ -178,3 +186,29 @@ def delete_bill_document(bill_id: str, db: Session = Depends(get_db)) -> Electri
     db.commit()
     db.refresh(bill)
     return ElectricityBillSchema.model_validate(bill)
+
+
+# ── AI bill scan ──────────────────────────────────────────────────────────────
+
+@router.post("/bills/scan", response_model=BillScanResult, tags=["Bills"])
+@limiter.limit(settings.rate_limit_bills_create)
+async def scan_bill_document(request: Request) -> BillScanResult:
+    """Upload a bill image/PDF; AI extracts fields into a draft for user confirmation.
+    Does NOT save to DB — scan only. File bytes in request body with Content-Type header.
+    """
+    limit = int(settings.max_bill_document_mb * 1024 * 1024)
+    declared_len = request.headers.get("content-length")
+    if declared_len and declared_len.isdigit() and int(declared_len) > limit:
+        return BillScanResult(
+            ok=False,
+            error=BillScanError(
+                code="file_too_large",
+                title="File is too large",
+                detail=f"The file exceeds the {settings.max_bill_document_mb:g} MB limit.",
+                hint="Compress the bill image/PDF or upload a smaller file, or enter the details manually.",
+            ),
+        )
+
+    data = await request.body()
+    content_type = request.headers.get("content-type", "")
+    return await scan_bill_bytes(data, content_type)

@@ -1,17 +1,28 @@
 import { useMemo, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { APPLIANCE_CATEGORIES, type ApplianceIconType, type CatalogueItem } from '../../data/applianceCatalogue';
 import { RELAY_CHANNELS } from '../../data/relayChannels';
 import { ApplianceIcon } from '../../components/appliances/ApplianceIcons';
 import { ApplianceRelayControl } from '../../components/appliances/ApplianceRelayControl';
+import { RelayMismatchTag } from '../../components/appliances/RelayMismatchTag';
 import { SimControlCard } from '../../components/appliances/SimControlCard';
 import { SimTag } from '../../components/appliances/SourceTag';
 import { PageHero } from '../../components/art/PageHero';
 import { useInventory } from '../../hooks/useInventory';
+import { useLiveData } from '../../hooks/useLiveData';
+import { notifyRelayMismatchChanged } from '../../hooks/useRelayMismatch';
 import type { EssentialStatus } from '../../context/inventoryContextDef';
 import { ArrowIcon, ChevronDown, TrashIcon } from '../../components/ui/icons';
 import { getDefaultDailyHours } from '../../utils/energyMath';
 import './devices.css';
+
+interface RelayPresetState {
+  presetRelay?: number;
+  presetWatts?: number;
+  replaceRelayOwner?: boolean;
+  previousApplianceName?: string;
+  previousApplianceId?: string;
+}
 
 const PICKER: { icon: ApplianceIconType; label: string; category: string; name: string; watts: number }[] = [
   { icon: 'bulb', label: 'Light', category: 'Lighting', name: 'Light', watts: 9 },
@@ -31,6 +42,8 @@ const CATEGORY_NAMES = [...APPLIANCE_CATEGORIES.map((c) => c.name), 'Other'];
 export function ApplianceFormPage() {
   const { catalogueId, applianceId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const preset = (location.state as RelayPresetState | null) ?? null;
   const { rooms, inventory, addAppliance, updateApplianceDetails, removeAppliance } = useInventory();
 
   const existing = applianceId ? inventory.find((i) => i.id === applianceId) : undefined;
@@ -45,21 +58,22 @@ export function ApplianceFormPage() {
 
   return (
     <FormBody
-      key={existing?.id ?? catalogueItem?.id ?? 'custom'}
+      key={`${existing?.id ?? catalogueItem?.id ?? 'custom'}-${preset?.presetRelay ?? ''}-${preset?.presetWatts ?? ''}`}
       existingId={existing?.id}
+      preset={preset}
       initial={{
         iconType: (existing?.iconType ?? catalogueItem?.iconType ?? 'bulb') as ApplianceIconType,
         name: existing?.name ?? catalogueItem?.name ?? '',
         category: existing?.category ?? catalogueItem?.category ?? 'Other',
         brand: existing?.brand ?? catalogueItem?.brand ?? '',
         model: existing?.model ?? '',
-        watts: existing?.ratedWatts ?? catalogueItem?.ratedWatts ?? 0,
+        watts: existing?.ratedWatts ?? catalogueItem?.ratedWatts ?? preset?.presetWatts ?? 0,
         quantity: existing?.quantity ?? 1,
         roomId: existing?.roomId || rooms[0]?.id || '',
         hours:
           existing?.dailyHours ?? getDefaultDailyHours(existing?.category ?? catalogueItem?.category),
         essential: (existing?.isEssential ?? 'unsure') as EssentialStatus,
-        relay: existing?.relayChannel ?? null,
+        relay: existing?.relayChannel ?? preset?.presetRelay ?? null,
         simAuto: existing?.simAuto ?? true,
       }}
       catalogueItem={catalogueItem}
@@ -92,6 +106,7 @@ interface FormState {
 
 interface FormBodyProps {
   existingId?: string;
+  preset: RelayPresetState | null;
   initial: FormState;
   catalogueItem?: CatalogueItem;
   isCustom: boolean;
@@ -104,16 +119,20 @@ interface FormBodyProps {
 }
 
 function FormBody(props: FormBodyProps) {
-  const { existingId, catalogueItem, isCustom, navigate, rooms, inventory } = props;
+  const { existingId, preset, catalogueItem, isCustom, navigate, rooms, inventory } = props;
+  const { sendRelayCommand, sendSimCommand } = useLiveData();
   const [f, setF] = useState<FormState>(props.initial);
   const [error, setError] = useState<string | null>(null);
   const editing = !!existingId;
   const saved = editing ? inventory.find((i) => i.id === existingId) : undefined;
+  const allowRelaySwap = Boolean(preset?.replaceRelayOwner);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => setF((prev) => ({ ...prev, [key]: value }));
   const freeChannels = RELAY_CHANNELS.filter((ch) => !inventory.some((i) => i.relayChannel === ch && i.id !== existingId));
+  const currentRelayOwner = f.relay != null ? inventory.find((i) => i.relayChannel === f.relay && i.id !== existingId) : undefined;
   const isRelay = f.relay != null;
-  const chooseMode = (relay: boolean) => set('relay', relay ? (f.relay ?? freeChannels[0] ?? null) : null);
+  const chooseMode = (relay: boolean) =>
+    set('relay', relay ? (f.relay ?? freeChannels[0] ?? (allowRelaySwap ? RELAY_CHANNELS[0] : null)) : null);
 
   const pickIcon = (p: (typeof PICKER)[number]) => {
     setF((prev) => ({
@@ -132,6 +151,7 @@ function FormBody(props: FormBodyProps) {
     setError(null);
 
     if (editing && existingId) {
+      const swappingOwner = Boolean(allowRelaySwap && f.relay != null && currentRelayOwner);
       props.updateApplianceDetails(existingId, {
         brand: f.brand,
         model: f.model,
@@ -141,8 +161,14 @@ function FormBody(props: FormBodyProps) {
         roomId: f.roomId,
         dailyHours: f.hours,
         relayChannel: f.relay,
+        replaceRelayOwner: swappingOwner,
         simAuto: f.simAuto,
       });
+      if (swappingOwner && currentRelayOwner) {
+        sendSimCommand(currentRelayOwner.id, 'OFF').catch(() => {});
+        sendRelayCommand('ON').catch(() => {});
+      }
+      notifyRelayMismatchChanged();
       navigate('/devices', { state: { toast: `Saved ${f.name}` } });
       return;
     }
@@ -157,16 +183,27 @@ function FormBody(props: FormBodyProps) {
       isExample: false,
       iconType: f.iconType,
     };
+    const swappingOwner = Boolean(allowRelaySwap && f.relay != null && currentRelayOwner);
     props.addAppliance(item, f.roomId, f.quantity, {
       brand: f.brand,
       model: f.model,
       isEssential: f.essential,
       relayChannel: f.relay,
+      replaceRelayOwner: swappingOwner,
       dailyHours: f.hours,
       simAuto: f.simAuto,
     });
+    if (swappingOwner && currentRelayOwner) {
+      sendSimCommand(currentRelayOwner.id, 'OFF').catch(() => {});
+      sendRelayCommand('ON').catch(() => {});
+    }
+    notifyRelayMismatchChanged();
     const room = rooms.find((r) => r.id === f.roomId)?.name ?? 'your home';
-    const how = f.relay != null ? `on relay ${f.relay}` : 'as a simulated device';
+    const how = f.relay != null
+      ? swappingOwner && currentRelayOwner
+        ? `on relay ${f.relay} (ON · ${currentRelayOwner.name} unassigned and turned OFF)`
+        : `on relay ${f.relay}`
+      : 'as a simulated device';
     navigate('/devices', { state: { toast: `Added ${f.quantity} × ${item.name} to ${room} ${how}` } });
   };
 
@@ -283,11 +320,11 @@ function FormBody(props: FormBodyProps) {
               aria-checked={isRelay}
               className={`connection__opt ${isRelay ? 'is-on' : ''}`}
               onClick={() => chooseMode(true)}
-              disabled={!isRelay && freeChannels.length === 0}
+              disabled={!isRelay && freeChannels.length === 0 && !allowRelaySwap}
             >
               <b>Real relay</b>
               <span>
-                {!isRelay && freeChannels.length === 0
+                {!isRelay && freeChannels.length === 0 && !allowRelaySwap
                   ? `Relay ${RELAY_CHANNELS[0]} is used by ${inventory.find((i) => i.relayChannel === RELAY_CHANNELS[0])?.name ?? 'another appliance'}.`
                   : 'Physically switched and measured by the SHEM meter.'}
               </span>
@@ -302,14 +339,19 @@ function FormBody(props: FormBodyProps) {
                   {RELAY_CHANNELS.map((ch) => {
                     const usedBy = inventory.find((i) => i.relayChannel === ch && i.id !== existingId);
                     return (
-                      <option key={ch} value={ch} disabled={!!usedBy}>
-                        Relay {ch}{usedBy ? ` — used by ${usedBy.name}` : ''}
+                      <option key={ch} value={ch} disabled={!!usedBy && !allowRelaySwap}>
+                        Relay {ch}{usedBy ? (allowRelaySwap ? ` — will replace ${usedBy.name}` : ` — used by ${usedBy.name}`) : ''}
                       </option>
                     );
                   })}
                 </select>
                 <ChevronDown className="form__chev" />
               </span>
+              {allowRelaySwap && currentRelayOwner && (
+                <span className="connection__hint">
+                  Saving will assign Relay {f.relay} to this appliance and unassign <strong>{currentRelayOwner.name}</strong> (kept in your devices so you can switch back anytime).
+                </span>
+              )}
             </label>
           ) : (
             <div className="form__field">
@@ -333,7 +375,12 @@ function FormBody(props: FormBodyProps) {
           )}
         </fieldset>
 
-        {saved?.relayChannel != null && saved.relayChannel === f.relay && <ApplianceRelayControl applianceName={saved.name} channel={saved.relayChannel} />}
+        {saved?.relayChannel != null && saved.relayChannel === f.relay && (
+          <>
+            <RelayMismatchTag applianceId={saved.id} />
+            <ApplianceRelayControl applianceName={saved.name} channel={saved.relayChannel} />
+          </>
+        )}
         {saved && saved.relayChannel == null && f.relay == null && <SimControlCard applianceId={saved.id} applianceName={saved.name} />}
 
         {error && <p className="form__error" role="alert">{error}</p>}

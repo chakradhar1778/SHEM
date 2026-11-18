@@ -210,6 +210,8 @@ class HouseholdConfig(Base):
     fuel_adjustment_inr_per_kwh: Mapped[float] = mapped_column(Float, default=0.0)  # FPPCA / FAC
     electricity_duty_percent: Mapped[float] = mapped_column(Float, default=0.0)     # on energy + fuel charges
     billing_cycle_day: Mapped[int] = mapped_column(Integer, default=1)              # meter-reading day, 1–28
+    # Relay load mismatch alert threshold (% deviation from rated watts, adjustable in Settings)
+    relay_mismatch_threshold_percent: Mapped[float] = mapped_column(Float, default=30.0)
     # True once the user has completed the Home Setup flow
     is_configured: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow, onupdate=utcnow)
@@ -248,6 +250,8 @@ class Appliance(Base):
     # Optional link to a physical relay channel on the SHEM device (NULL = not relay-controlled).
     # One channel can drive at most one appliance entry (enforced in the inventory API).
     relay_channel: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # Remembers the relay channel this appliance was previously plugged into (helps re-identification).
+    last_relay_channel: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     # ── Simulation (appliances WITHOUT a relay run as realistic simulated devices) ──
     # sim_auto: follow the daily routine derived from daily_hours + appliance type.
     sim_auto: Mapped[bool] = mapped_column(Boolean, default=True)
@@ -352,13 +356,25 @@ class Notification(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     dedupe_key: Mapped[str] = mapped_column(String(160), unique=True)
-    kind: Mapped[str] = mapped_column(String(32))          # bill_due | budget | slab | bill_mismatch | saver
+    kind: Mapped[str] = mapped_column(String(32))          # bill_due | budget | slab | bill_mismatch | saver | relay_mismatch
     severity: Mapped[str] = mapped_column(String(16))      # info | warning | critical | success
     title: Mapped[str] = mapped_column(String(200))
     message: Mapped[str] = mapped_column(Text)
     link: Mapped[Optional[str]] = mapped_column(String(200))   # in-app route, e.g. /bill
+    metadata_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     read_at: Mapped[Optional[datetime]] = mapped_column(UTCDateTime)
+
+    @property
+    def metadata_dict(self) -> Optional[dict]:
+        if not self.metadata_json:
+            return None
+        import json
+        try:
+            val = json.loads(self.metadata_json)
+            return val if isinstance(val, dict) else None
+        except Exception:
+            return None
 
     __table_args__ = (
         Index("ix_notifications_created", "created_at"),

@@ -15,3 +15,18 @@
 .settings__diag dl div { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
 .settings__diag dt { color: var(--muted); }
 .settings__diag dd { color: var(--ink); font-weight: 600; text-align: right; }
+
+.settings__threshold {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+.settings__threshold-slider { flex: 1; }
+.settings__threshold-slider input[type="range"] {
+  width: 100%;
+  accent-color: var(--blue, #2563EB);
+}
+.settings__threshold-num {
+  width: 78px;
+  text-align: center;
+}

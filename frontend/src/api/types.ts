@@ -130,6 +130,7 @@ export interface HouseholdConfigDTO {
   floorAreaSqm: number | null;
   utilityProvider: string | null;
   tariffRateINRPerKWh: number;
+  relayMismatchThresholdPercent?: number;
   isConfigured: boolean;
   updatedAt: string | null;
 }
@@ -160,6 +161,8 @@ export interface ApplianceDTO {
   notes: string | null;
   /** Relay channel that switches this appliance (null = not relay-controlled) */
   relayChannel: number | null;
+  /** Remembers the relay channel this appliance was previously connected to */
+  lastRelayChannel?: number | null;
   /** True when not on a relay → runs as a realistic simulated device */
   isSimulated: boolean;
   /** Simulated only: follow the daily routine built from dailyHours */
@@ -561,8 +564,82 @@ export interface NotificationItem {
   message: string;
   /** In-app route to open, e.g. /bill */
   link: string | null;
+  /** Optional structured payload (e.g. relay_mismatch details) */
+  metadata?: Record<string, unknown> | null;
   createdAt: string;
   readAt: string | null;
+}
+
+export interface RelayMismatchCandidate {
+  applianceId: string;
+  name: string;
+  iconType: string | null;
+  ratedWatts: number;
+  wasOnRelay: boolean;
+  deviationPercent: number;
+}
+
+export interface RelayMismatchStatus {
+  active: boolean;
+  channel: number;
+  applianceId: string | null;
+  applianceName: string | null;
+  iconType: string | null;
+  ratedWatts: number | null;
+  liveWatts: number | null;
+  deviationPercent: number | null;
+  thresholdPercent: number;
+  bigDiffFactor: number;
+  isBigDiff: boolean;
+  suggestedAppliance: RelayMismatchCandidate | null;
+  matchingAppliances: RelayMismatchCandidate[];
+  notificationId: number | null;
+}
+
+export interface RelayMismatchConfirmSameResponse {
+  accepted: boolean;
+  requiresWarning: boolean;
+  message: string;
+  liveWatts: number | null;
+  ratedWatts: number | null;
+  deviationPercent: number | null;
+}
+
+export type BillScanErrorCode =
+  | 'ai_unavailable'
+  | 'vision_unsupported'
+  | 'invalid_file'
+  | 'file_too_large'
+  | 'not_a_bill'
+  | 'unreadable_image'
+  | 'incomplete_bill'
+  | 'rate_limited'
+  | 'parse_failed'
+  | 'scan_failed';
+
+export interface BillScanError {
+  code: BillScanErrorCode;
+  title: string;
+  detail: string;
+  hint?: string | null;
+}
+
+export interface BillScanResult {
+  ok: boolean;
+  provider?: string | null;
+  accountId?: string | null;
+  unitsKWh?: number | null;
+  amountINR?: number | null;
+  billingMonth?: number | null;
+  billingYear?: number | null;
+  periodStart?: string | null;
+  periodEnd?: string | null;
+  dueDate?: string | null;
+  confidence?: 'high' | 'medium' | 'low' | null;
+  warnings?: string[];
+  scanNote?: string | null;
+  aiProvider?: string | null;
+  error?: BillScanError | null;
 }
 
 export interface NotificationList {

@@ -266,8 +266,11 @@ def run_budget_saver(db: Session, proj: dict, budget: Optional[dict], mqtt_clien
 # ── entry point ────────────────────────────────────────────────────────────────
 
 def run_checks(db: Session, mqtt_client: Any = None) -> Dict[str, Any]:
+    from app.services.relay_mismatch_service import check_relay_mismatch
+
     now = utcnow()
     new: List[Notification] = []
+    new += check_relay_mismatch(db, settings.device_id)
     new += _bill_due(db, to_local(now).date())
     proj = bs.project_cycle(db, now=now)
     budget = bs.budget_status(db, proj)

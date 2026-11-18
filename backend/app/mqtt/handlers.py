@@ -19,7 +19,7 @@ from typing import Optional, Type, TypeVar
 from pydantic import BaseModel, ValidationError
 
 from app.config import get_settings
-from app.database import SessionLocal
+from app.database import SessionLocal, is_connection_error
 from app.models.schemas import (
     MQTTRelayAckPayload,
     MQTTRelayStatePayload,
@@ -73,23 +73,42 @@ def broadcast_mqtt_state(connected: bool) -> None:
         logger.exception("Could not broadcast MQTT state change")
 
 
+def _ingest_with_retry(payload: MQTTTelemetryPayload):
+    """
+    Store one reading; retry once on a fresh connection when the database
+    connection itself failed (e.g. Turso expired an idle stream). Nothing was
+    committed by the failed attempt, so the retry cannot duplicate the row.
+    """
+    for attempt in (1, 2):
+        with SessionLocal() as db:
+            try:
+                result = ingest_telemetry(db, payload)
+                db.expunge_all()
+                return result
+            except Exception as exc:
+                if attempt == 1 and is_connection_error(exc):
+                    logger.warning("Telemetry write hit a dead DB connection (%s); retrying once", exc)
+                    continue
+                logger.exception("Error storing telemetry")
+                return None
+    return None
+
+
 def handle_telemetry(raw: bytes, retained: bool = False) -> None:
     payload = _parse("telemetry", raw, MQTTTelemetryPayload)
     if payload is None:
         return
-    with SessionLocal() as db:
-        try:
-            result = ingest_telemetry(db, payload)
-        except Exception:
-            logger.exception("Error storing telemetry")
-            return
-        if result.row is None:
-            logger.warning("[telemetry] discarded: %s", result.discarded_reason)
-            return
-        if result.row.validity == "valid":
-            broadcaster.publish_from_thread("telemetry", reading_from_row(result.row).model_dump(mode="json"))
-        else:
-            logger.warning("[telemetry] stored as invalid: %s", result.row.validity_reason)
+    result = _ingest_with_retry(payload)
+    if result is None:
+        return
+    if result.row is None:
+        logger.warning("[telemetry] discarded: %s", result.discarded_reason)
+        return
+    # ingest_telemetry refreshed the row before it was detached, so its columns are loaded.
+    if result.row.validity == "valid":
+        broadcaster.publish_from_thread("telemetry", reading_from_row(result.row).model_dump(mode="json"))
+    else:
+        logger.warning("[telemetry] stored as invalid: %s", result.row.validity_reason)
     if result.came_online or result.row.validity != "valid":
         _broadcast_device_status()
 

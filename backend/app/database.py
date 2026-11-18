@@ -6,6 +6,7 @@ Provides the SQLAlchemy engine, session factory, and Base for ORM models.
 from __future__ import annotations
 
 import logging
+import time
 from typing import Generator
 
 from sqlalchemy import create_engine, event, text
@@ -61,9 +62,23 @@ _TURSO_BROKEN_MARKERS = (
 )
 
 
+# Turso expires an idle Hrana stream after a few seconds; a pooled connection
+# that sat unused longer than this is replaced instead of failing mid-transaction.
+TURSO_MAX_IDLE_SECONDS = 5.0
+
+
 def _is_broken_turso_error(exc: BaseException) -> bool:
     text_ = str(exc).lower()
     return type(exc).__name__ == "PanicException" or any(m in text_ for m in _TURSO_BROKEN_MARKERS)
+
+
+def is_connection_error(exc: BaseException) -> bool:
+    """True when a failure came from a dead/expired DB connection (safe to retry once)."""
+    from sqlalchemy import exc as sa_exc
+
+    if isinstance(exc, sa_exc.DBAPIError) and exc.connection_invalidated:
+        return True
+    return _is_broken_turso_error(getattr(exc, "orig", None) or exc)
 
 
 def _harden_turso_engine(eng) -> None:
@@ -92,12 +107,20 @@ def _harden_turso_engine(eng) -> None:
 
     eng.dialect.do_rollback = do_rollback
 
+    @event.listens_for(eng, "checkin")
+    def _mark_idle_start(dbapi_connection, connection_record):
+        connection_record.info["turso_checked_in"] = time.monotonic()
+
     @event.listens_for(eng, "checkout")
     def _replace_broken(dbapi_connection, connection_record, connection_proxy):
+        # Documented pool hook: raising DisconnectionError discards this
+        # connection and retries the checkout with a fresh one.
         if id(dbapi_connection) in broken:
             broken.discard(id(dbapi_connection))
-            # Documented pool hook: discards this connection and retries with a new one.
             raise sa_exc.DisconnectionError("Turso connection was left broken; reconnecting")
+        idle_since = connection_record.info.get("turso_checked_in")
+        if idle_since is not None and time.monotonic() - idle_since > TURSO_MAX_IDLE_SECONDS:
+            raise sa_exc.DisconnectionError("Turso stream likely expired while idle; reconnecting")
 
     @event.listens_for(eng, "close")
     def _forget_closed(dbapi_connection, connection_record):
@@ -138,7 +161,11 @@ def _resolve_engine() -> tuple[object, bool]:
             pool_size=5,
             max_overflow=10,
             pool_timeout=30,
-            pool_recycle=300,           # refresh long-lived Hrana streams
+            # LIFO keeps reusing the most recently returned (still live)
+            # connection; FIFO rotated telemetry across all 5, leaving each idle
+            # ~10 s, long enough for Turso to expire its stream.
+            pool_use_lifo=True,
+            pool_recycle=300,
             connect_args={**connect_args, "check_same_thread": False},
             echo=False,
         )

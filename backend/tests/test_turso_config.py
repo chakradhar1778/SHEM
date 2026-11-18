@@ -122,3 +122,49 @@ def test_mqtt_dispatch_survives_driver_panic():
     mgr.register_handlers(on_telemetry=panic, on_status=MagicMock(), on_relay_state=MagicMock(), on_relay_ack=MagicMock())
     mgr._on_message(mgr._client, None, SimpleNamespace(topic="shem/device/001/telemetry", payload=b"{}", retain=0))
     panic.assert_called_once()
+
+
+def test_connection_idle_too_long_is_replaced_at_checkout(tmp_path, monkeypatch):
+    from sqlalchemy import text
+    from sqlalchemy.orm import Session
+    from app import database
+
+    eng = _hardened_sqlite_engine(tmp_path)
+    with Session(eng) as s:
+        first = s.connection().connection.dbapi_connection
+    with Session(eng) as s:                              # reused right away
+        assert s.connection().connection.dbapi_connection is first
+
+    clock = database.time.monotonic() + database.TURSO_MAX_IDLE_SECONDS + 1
+    monkeypatch.setattr(database.time, "monotonic", lambda: clock)
+    with Session(eng) as s:                              # idle too long -> fresh connection
+        assert s.connection().connection.dbapi_connection is not first
+        assert s.execute(text("SELECT 1")).scalar() == 1
+
+
+def test_telemetry_write_is_retried_once_on_dead_connection(client, monkeypatch):
+    import json
+    from sqlalchemy import func, select
+    from app.database import SessionLocal
+    from app.models.db_models import TelemetryRow
+    from app.mqtt import handlers
+    from app.services import telemetry_service
+
+    real = telemetry_service.ingest_telemetry
+    calls = {"n": 0}
+
+    def flaky(db, payload):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise ValueError("Hrana: `stream error: interactive transaction was rolled back because "
+                             "the stream was idle for too long; retry the transaction")
+        return real(db, payload)
+
+    monkeypatch.setattr(handlers, "ingest_telemetry", flaky)
+    payload = {"deviceId": "001", "voltage": 230.0, "current": 0.5, "power": 100.0, "energy": 1.0,
+               "frequency": 50.0, "powerFactor": 0.9, "relay1State": "ON", "supplyType": "AC",
+               "source": "PZEM-004T", "energyUnit": "kWh", "timestamp": ""}
+    handlers.handle_telemetry(json.dumps(payload).encode())
+    assert calls["n"] == 2
+    with SessionLocal() as db:
+        assert db.scalar(select(func.count()).select_from(TelemetryRow)) == 1

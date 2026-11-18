@@ -1,0 +1,18 @@
+# Litestream: continuously replicates the SQLite database to S3-compatible
+# object storage (Backblaze B2, Cloudflare R2, AWS S3, ...), so the data
+# survives restarts/redeploys on hosts with an ephemeral disk (Render free).
+# Values come from environment variables (expanded by Litestream at startup).
+dbs:
+  - path: ${SQLITE_PATH}
+    replicas:
+      - type: s3
+        bucket: ${LITESTREAM_BUCKET}
+        path: ${LITESTREAM_PATH}
+        endpoint: ${LITESTREAM_ENDPOINT}
+        region: ${LITESTREAM_REGION}
+        access-key-id: ${LITESTREAM_ACCESS_KEY_ID}
+        secret-access-key: ${LITESTREAM_SECRET_ACCESS_KEY}
+        sync-interval: 1s
+        # keep one day of point-in-time history; older snapshots are pruned
+        retention: 24h
+        snapshot-interval: 6h
